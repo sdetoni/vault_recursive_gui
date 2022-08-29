@@ -1,0 +1,94 @@
+# Disable administration API
+# Probably shouldn't be used unless you can guarantee only trusted users can log in locally on server
+{
+  admin off
+}
+
+https://127.0.0.1:443  {
+#    log {
+#        output stdout
+#        format console
+#        level  info
+#    }
+
+    # compress all standard text formats ...
+    encode {
+        zstd gzip
+    }
+
+    # redirect root and research paths
+    redir /            /recsearch/ permanent
+    redir /recsearch   /recsearch/ permanent
+
+    # override vault about iframe restrictions and allow it for from the same server.
+    header {
+        label1 Access-Control-Allow-Origin "*"
+        label1 X-Frame-Options "SAMEORIGIN"
+        label1 Content-Security-Policy "frame-ancestors 'self';"
+    }
+
+    # file location for the javascript based recursive search html doc
+    route {
+        header ?Cache-Control "max-age=3600"
+
+        file_server /recsearch/* {
+            root ./src
+        }
+    }
+
+    # reverse proxy for nodejs bulk loader of secrets...
+    route /vaultbulkcacheloader* {
+        reverse_proxy  https://127.0.0.1:16180  {
+            lb_policy        round_robin
+
+            transport http {
+                tls
+                
+                # HTTP request failed     {"host": "127.0.0.1:8200", "error": "Get \"https://127.0.0.1:8200/v1/sys/seal-status\": x509: certificate signed by unknown authority"}
+                # IMPORTANT: remove/disable  tls_insecure_skip_verify in a production env!
+                tls_insecure_skip_verify
+                read_buffer 8192
+            }
+        
+            # vault status
+            health_path      /status
+            health_status    200
+            health_interval  30s
+        }
+    }
+
+ 
+    # Proxy all traffic over HTTPS to Vault nodes on 8200
+    # raft configuration : reverse_proxy  https://node1.com:8200 https://node2.com:8200 https://node3.com:8200{
+    reverse_proxy  https://127.0.0.1:8200 {
+        lb_policy        round_robin
+
+        transport http {
+            tls
+            
+            # HTTP request failed     {"host": "127.0.0.1:8200", "error": "Get \"https://127.0.0.1:8200/v1/sys/seal-status\": x509: certificate signed by unknown authority"}
+            # IMPORTANT: remove/disable  tls_insecure_skip_verify in a production env!
+            tls_insecure_skip_verify
+            read_buffer 8192
+        }
+       
+        # Enable these health tests in a clustered environment, reverse_proxy over many vault nodes in Raft cluster setup
+        ## vault status
+        #health_path      /v1/sys/seal-status
+        #health_status    200
+        #health_body      initialized":true.*"sealed":false.*
+        #health_interval  30s
+
+        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
+        header_down -Content-Security-Policy
+    }
+
+    # SSL Cert
+    tls vault_server.crt vault_server.key {
+        protocols tls1.2
+        ciphers TLS_RSA_WITH_AES_256_CBC_SHA TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+    }
+}
+
+
+

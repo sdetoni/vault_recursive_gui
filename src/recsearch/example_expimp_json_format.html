@@ -1,0 +1,63 @@
+<meta http-equiv="Pragma" content="no-cache">
+<h2><u>Vault Secrets Export/Import JSON Format</u></h2>
+
+<h3><u>Structure</u></h3>
+<pre style="font-family:Consolas; font-size:11px;">
+The import process consists of a JSON array containing a dictionary object 
+that defines a key/value item within Vault (data_json).
+The format only supports Vault version 2 KV data sets.
+
+[
+{
+    "mount"  : "secret mount point name"
+    "kv_path" : "path to secret within mount point"
+    "data_json" : {  
+        "secret name1" : "secret data 1",
+        "secret name2" : "secret data 2", 
+        ...
+    }
+
+}, 
+...
+]
+</pre>
+<h3><u>Example JSON Export/Import:</u></h3>
+<pre>
+[{
+    "mount" : "asg/",
+    "kv_path" : "testdir/testitem",
+    "data_json" : {
+        "a" : "s"
+    }
+},{
+    "mount" : "systems-testing/",
+    "kv_path" : "test-secret/blah",
+    "data_json" : {
+        "ZXx" : "ZXXZ"
+        ,"key1" : "blahblah1"
+        ,"key2" : "blahblah2"
+    }
+},{
+    "mount" : "systems-testing/",
+    "kv_path" : "test-secret/blah2",
+    "data_json" : {
+        "ZXx" : "ZXXZ"
+        ,"key1" : "blahblah1"
+        ,"key2" : "blah\"blah2\"test\\\""
+    }
+},{
+    "mount" : "systems-testing/",
+    "kv_path" : "test-secret/flash",
+    "data_json" : {
+        "password" : "xvlXZW@##DA@DCXAA"
+        ,"username" : "administrator"
+    }
+},{
+    "mount" : "systems/",
+    "kv_path" : "this-empty-for-a-reason",
+    "data_json" : {
+        "no-more-secrets" : "to view"
+    }
+}]
+
+</pre>

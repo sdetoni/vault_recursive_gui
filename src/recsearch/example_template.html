@@ -1,0 +1,301 @@
+<meta http-equiv="Pragma" content="no-cache">
+<h2><u>Vault Access Secrets Examples</u></h2>
+
+<h3><u>Secret Access Parameters</u></h3>
+<pre style="font-family:Consolas; font-size:11px;">
+Access Secret URL:  <b>%API-URL%</b>
+Server URL:         <b>%SERVER-URL%</b>
+Secret Path:        <b>%SECRET-PATH%</b>
+Secret Mount Point: <b>%SCRT-NAME%</b>
+Secret Mount Path:  <b>%SCRT-PATH%</b>
+</pre>
+
+<h3><u>Curl Example</u></h3>
+<pre class="prettyprint lang-bash" style="font-family:Consolas; font-size:11px;background-color:ghostwhite;">
+curl -X PUT -H "X-Vault-Request: true" -d '{"password":"#######"}'<b>%SERVER-URL%/v1/auth/ldap/login/%USERNAME%</b>
+curl -H "X-Vault-Request: true" -H "X-Vault-Token: $(vault print token)" <b>%API-URL%</b>
+</pre>
+    
+<h3><u>Powershell Example</u></h3>
+<pre class="prettyprint lang-powershell" style="font-family:Consolas; font-size:11px;background-color:ghostwhite;">
+$GLOBAL:G_VaultAddrs = "%SERVER-URL%"
+
+# return  $null or login token details in client_token attribute upon success
+function VaultLogin ([string]$username, [string]$password, [string]$method="ldap", [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = @{ 'password' = $password }        
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'}
+    }
+    catch
+    {
+        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name auth)
+            {
+                return $result.auth;
+            }
+        }
+    }
+    return $null
+}
+
+# return  $null or login token details in client_token attribute upon success
+function VaultLoginAppRole ([string]$role_id, [string]$secret_id, [string]$method="approle", [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = [Ordered]@{    
+	    role_id = $role_id    
+	    secret_id = $secret_id
+    } | ConvertTo-Json -Compress      
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login') -body $params
+    }
+    catch
+    {
+        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login') + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name auth)
+            {
+                return $result.auth;
+            }
+        }
+    }
+    return $null
+}
+
+function VaultReadSecret ([string]$token, [string]$accessPath, [string]$vaultAddrs=$G_VaultAddrs)
+{
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Get' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/'+$accessPath) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
+    }
+    catch
+    {
+        Throw ("Failed to get secret from " + ($vaultAddrs+'/v1/'+$accessPath) + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name data)
+            {
+                return $result.data.data;
+            }
+        }
+    }
+    return $null
+}
+
+function VaultLogout([string]$token, [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = @{ 'token' = $token }        
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/token/revoke-self')  -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
+    }
+    catch
+    {
+        Throw ("Failed to revoke token " + $error[0])
+    }
+
+    return $true
+}
+
+
+# Example Vault code
+write-host "Enter password"
+$pwd = Read-Host -AsSecureString
+$save = $Host.UI.RawUI.ForegroundColor
+$Host.UI.RawUI.ForegroundColor = 'White'
+$bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
+$password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+[Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
+$Host.UI.RawUI.ForegroundColor = $save
+
+$auth  = VaultLogin -username <b>'%USERNAME%'</b> -password $password
+#$auth = VaultLoginAppRole -role_id $roleID -secret_id $secretID
+
+$secret = VaultReadSecret  -token $auth.client_token  -accessPath <b>'%SECRET-PATH%'</b>
+
+Write-Host ("Secret : " + ($secret | out-string))
+
+Write-Host "Revoking Token (logout)"
+VaultLogout -token $auth.client_token  
+</pre>
+
+
+<h3><u>Powershell V-Sphere (VMWare) Example</u></h3>
+<pre class="prettyprint lang-powershell" style="font-family:Consolas; font-size:11px;background-color:ghostwhite;">
+$GLOBAL:G_VaultAddrs = "%SERVER-URL%"
+
+# return  $null or login token details in client_token attribute upon success
+function VaultLogin ([string]$username, [string]$password, [string]$method="ldap", [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = @{ 'password' = $password }        
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'}
+    }
+    catch
+    {
+        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name auth)
+            {
+                return $result.auth;
+            }
+        }
+    }
+    return $null
+}
+
+# return  $null or login token details in client_token attribute upon success
+function VaultLoginAppRole ([string]$role_id, [string]$secret_id, [string]$method="approle", [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = [Ordered]@{    
+	    role_id = $role_id    
+	    secret_id = $secret_id
+    } | ConvertTo-Json -Compress      
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login') -body $params
+    }
+    catch
+    {
+        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login') + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name auth)
+            {
+                return $result.auth;
+            }
+        }
+    }
+    return $null
+}
+
+function VaultReadSecret ([string]$token, [string]$accessPath, [string]$vaultAddrs=$G_VaultAddrs)
+{
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Get' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/'+$accessPath) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
+    }
+    catch
+    {
+        Throw ("Failed to get secret from " + ($vaultAddrs+'/v1/'+$accessPath) + "  " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name data)
+            {
+                return $result.data.data;
+            }
+        }
+    }
+    return $null
+}
+
+function VaultLogout([string]$token, [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = @{ 'token' = $token }        
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/token/revoke-self')  -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
+    }
+    catch
+    {
+        Throw ("Failed to revoke token " + $error[0])
+    }
+
+    return $true
+}
+
+# ============================================================================================
+
+
+$VaultWinAdminPath = "%SECRET-PATH%"
+$VaultUsername     = "%USERNAME%"
+$VIServer          = @('v-sphere.vmware.host.com')
+$SVRS              = @('destinaction1.host.com', 'destinaction2.host.com', 'destinaction3.host.com')
+ 
+$pwd = Read-Host -prompt "Enter Vault LDAP password for user '$VaultUsername'" -AsSecureString
+$save = $Host.UI.RawUI.ForegroundColor
+$Host.UI.RawUI.ForegroundColor = 'White'
+$bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
+$password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+[Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
+$Host.UI.RawUI.ForegroundColor = $save
+$auth  = VaultLogin -username $VaultUsername -password $password
+Remove-Variable password
+Remove-Variable pwd
+
+
+# ============================================================================================
+
+# Connect to v-sphere
+foreach ($vc in $VIServer)
+{    
+    Connect-VIServer $vc | Out-Null
+}
+
+# v-sphere processing loop
+foreach ($s in $SVRS)
+{
+    try 
+    {
+        $h = get-vm $s -ErrorAction SilentlyContinue
+        if (-not $h)
+        {
+            echo "ERROR: $s failed get-vm(), vm does not exist!"
+            continue
+        }
+
+        if ($h.PowerState -ine "PoweredOn")
+        {
+            echo "ERROR: $s not powered on!"
+            continue
+        }
+
+        # query vault to get admin credentials 
+        $secret = VaultReadSecret  -token $auth.client_token  -accessPath "$VaultWinAdminPath$s"
+                        
+        Invoke-VMScript -VM $h -ScriptText "dir" -GuestUser $secret.username -GuestPassword $secret.password 
+    }
+    catch 
+    {
+        echo "ERROR: host:$s $($Error[0])"
+        continue
+    }    
+}
+
+# Disconnect from v-sphere
+foreach ($vc in $VIServer)
+{
+    Disconnect-VIServer $vc -confirm:$false
+}
+</pre>

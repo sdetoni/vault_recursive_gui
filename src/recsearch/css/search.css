@@ -1,0 +1,343 @@
+html, body {
+    background:#ebebeb; 
+    font-size:10px; 
+    font-family:Verdana; 
+    margin:0; 
+    padding:0; 
+}
+
+html {    
+    /* overflow-x: hidden !important; */
+    overflow:hidden;
+}
+
+/* jquery ui */
+.ui-dialog .ui-dialog-content { padding: 0; } 
+
+/* jquery ui dialog title button */
+.custom-title-button {
+    margin-right:5px;
+    padding: 0px !important;
+    font-size:8px;    
+}
+/* set jquery ui dialog box at a low z order display otherwise combo-box field has minor display priority issues */
+.ui-dialog { z-index: 10 !important ;}
+
+/* Change the custom search drop down a little */
+.custom-combobox-toggle {
+    width:40px !important;        
+    border-left: transparent !important;    
+}
+
+/* remove the  focus border around search field */
+#vault_search_style.ui-widget * { outline: none; }​ 
+#vault_search_style input {
+  background: #fff;
+  color: #525865;
+  border-radius: 4px;
+  border: 1px solid #d1d1d1;
+  box-shadow: inset 0px 1px 8px rgba(0, 0, 0, 0.2);
+  font-family: inherit;
+  font-size: 1em;
+  line-height: 1.45;
+  outline: none;
+  padding: 0.6em 1.45em 0.7em;
+  -webkit-transition: .18s ease-out;
+  -moz-transition: .18s ease-out;
+  -o-transition: .18s ease-out;
+  transition: .18s ease-out;
+}
+
+#vault_search_style input:hover {
+  background-color:#ededed;  
+}
+
+#vault_search_style input:focus {
+  color: #4b515d;
+  border: 1px solid #B8B6B6;
+  box-shadow: inset 1px 2px 4px rgba(0, 0, 0, 0.01), 0px 0px 8px rgba(0, 0, 0, 0.2);
+}
+
+
+/* jquery ui, no title bar */
+.custom-no-titlebar .ui-dialog-titlebar {
+    display: none;
+}
+
+/* jquery ui, title bar height */
+.ui-draggable .ui-dialog-titlebar {
+    padding: 1px;
+}
+
+/* jquery ui, title bar icon close size and position */
+.ui-dialog .ui-dialog-titlebar-close {
+    width: 15px;
+    height: 14px;
+    margin: -7px 0 0 0;
+    padding: 0px;
+}
+
+
+.ui-button-icon-only .ui-icon {
+    position: absolute;
+    top: 50%;
+    left: 49%;
+    margin-top: -8px;
+    margin-left: -8px;
+}
+
+.ui-button-icon-only {
+    width: 1.5em;
+    box-sizing: border-box;
+    text-indent: -9999px;
+    white-space: nowrap;
+}
+
+button {
+    cursor: pointer;
+    padding: 3px !important;
+}
+
+/* jsTree */
+#container { min-width:320px; margin:0px auto 0 auto; background:white; border-radius:0px; padding:0px; overflow:hidden; }
+#tree { float:left; min-width:319px; border-right:1px solid silver; overflow:auto; padding:0px 0; }
+#data { margin-left:320px; }
+#data textarea { margin:0; padding:0; height:100%; width:100%; border:0; background:white; display:block; line-height:18px; resize:none; }
+#data, #code { font: normal normal normal 12px/18px 'Consolas', monospace !important; }
+#tree .folder { background:url('/js_libs/file_sprite.png') right bottom no-repeat; }
+.jstree-checkbox-disabled { opacity: .2 !important; }
+.jstree-checked>.jstree-checkbox {opacity: 1 !important; }
+
+
+#vault_search_base_path_style > span {
+    width: 300px;
+    font-family:monospace;
+}
+
+#vault_search_style > span > input.custom-combobox-input {
+    width: 300px;
+    font-family:monospace;
+}
+
+#vault_search_comboboxinput::placeholder {
+    color:#bbb;
+    
+}
+
+#gotosecretpath_input::placeholder {
+    color:#bbb; 
+}
+
+/* jsTree awesome font links/icons */
+.fa-archive:hover{
+   color:magenta !important;
+}
+
+.fa-circle:hover{
+   color:magenta !important;
+}
+
+.hover-white:hover{
+   color:white !important;
+}
+
+.hover-red:hover{
+   color:red !important;
+}
+
+.fa-exclamation:hover{
+   color:blue !important;
+}
+
+.vgoto-link1:hover {
+   color:red !important;
+}
+
+.vgoto-link1 {
+    position:relative;
+    color:blue !important;
+    left:5px;
+    font-size: small !important;
+    text-decoration:none;
+}
+
+.vgoto-link2:hover {
+   color:red !important;
+}
+
+.vgoto-link2 {
+    position:relative;
+    color:blue !important;
+    left:-15px;
+    font-size: normal !important;
+    text-decoration:none;
+    
+    font-weight:bold;
+}
+
+.vcopy-link:hover {
+   color:red !important;
+}
+
+.vcopy-link {
+    text-decoration:none;
+    position:relative;
+    left:-20px;
+    color:blue !important;
+    font-size: medium !important;
+}
+
+.search-action {
+   padding: 5px !important;
+}
+
+.disabled-icon {
+   color:           darkgrey;
+   cursor:          not-allowed; 
+   text-decoration: none;   
+}
+/* The userNoteNorm - position it at the bottom and in the middle of the screen */
+#userNoteNorm {
+  visibility:       visible; /*hidden; /* Hidden by default. Visible on click */
+  min-width:        250px;  /* Set a default minimum width */
+  margin-left:      -125px; /* Divide value of min-width by 2 */
+  background-color: #00f;   /* Black background color */
+  color:            #fff;   /* White text color */
+  text-align:       center; /* Centered text */
+  font-size:        smaller;
+  border-radius:    2px;    /* Rounded borders */
+  padding:          16px;   /* Padding */
+  position:         fixed;  /* Sit on top of the screen */
+  z-index:          1;      /* Add a z-index if needed */
+  left:             50%;    /* Center the userNoteNorm */
+  top:              -130px;   /* 30px from the bottom */
+}
+
+ #userNoteErr {
+  visibility:       visible; /* idden; /* Hidden by default. Visible on click */
+  min-width:        250px;  /* Set a default minimum width */
+  margin-left:      -125px; /* Divide value of min-width by 2 */
+  background-color: #f00;   /* Black background color */
+  color:            #fff;   /* White text color */
+  text-align:       center; /* Centered text */
+  font-size:        smaller;
+  border-radius:    2px;    /* Rounded borders */
+  padding:          16px;   /* Padding */
+  position:         fixed;  /* Sit on top of the screen */
+  z-index:          1;      /* Add a z-index if needed */
+  left:             50%;    /* Center the userNoteErr */
+  top:             -130px;   /* 30px from the bottom */
+}
+
+.stree-folder {
+    font-weight: bold;    
+}
+
+.stree-endnode {
+    font-weight: bold;
+    color:red;
+}
+
+.stree-admenu {
+    display:     none;
+/*    
+    position:    relative;
+    right:       -4px;
+    z-index:     10;    
+    float:       right;   
+    font-weight: bold;
+*/    
+    color:       darkcyan;
+    background:  floralwhite;       
+}
+
+.stree-pwd {
+    position:    relative;
+    right:       -4px;
+    z-index:     10;
+    float:       right;   
+    font-weight: bold;
+    color:       darkcyan;
+    background:  floralwhite;    
+   
+}
+
+.stree-pwd pre {
+    border-style:  solid;
+    border-color:  #000000;
+    border-width:  1px;     
+    margin:        0px;
+    padding-left:  5px;
+    padding-right: 5px;    
+}
+.search-chkboxs-syle
+{
+  padding: 5px !important;
+  color:blue;
+}
+.cache-status-empty {
+  color: #f00;
+}
+
+.cache-status-full {
+  color: #297c29;  
+}
+
+.cache-status-loading {
+  color: #222;
+  animation-name: cache-status-loading-col;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+}
+   
+@keyframes cache-status-loading-col {
+  0% {
+    color: #222;
+  }
+  50% {
+    color: #4285f4;
+  }
+  100 {
+    color: #222;
+  }
+}
+
+#searchrun-reshow {
+    left: -10px;
+    position: relative;
+}
+
+#iframe_table {
+    width:100%;
+    height:100%;
+    border-collapse: collapse;
+}
+
+.ShowSearchTools {
+    background-color:#ffffff;
+}
+
+#vaultIFrame {
+    width:100%;
+    height:100%
+}
+
+#clipOperation {
+    font-weight: bold;
+    font-family: monospace;
+}
+
+#clipVaultSrcPath {
+    font-weight: bold;
+    font-family: monospace;
+    color:blue;
+}
+
+#clipVaultDestPath {
+    font-weight: bold;
+    font-family: monospace;
+    color:red;
+}
+.ShowSearchTools {
+    display:none;
+}
