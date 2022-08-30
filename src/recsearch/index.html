@@ -927,16 +927,22 @@ function AsyncCacheLoad ()
                 AsyncCacheLoading = true;      
                 updateReqCacheIconStatusNow ();
                 
-                dbgInfo ("AsyncCacheLoad: async vaultbulkcacheloader cache loading ... ");
+                dbgInfo ("AsyncCacheLoad: async vaultbulkcacheloader cache loading ... ");              
                 let bulkData = await fetch(VaultAddr + '/vaultbulkcacheloader', {
                                         method: 'GET',
                                         headers: { "x-vault-token" : token },
                                         cache: 'no-cache'
                                     })
-                                    .then(response => response.json())
+                                    .then(response => {
+                                        if (response.status != 200)
+                                            dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Failure :' + response.status + ' : ' + response.url);
+                                            return null;
+                                        return response.json()
+                                     })
                                     .then(data => {
-                                         dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Success:');
-                                         return data;
+                                        if (data)
+                                            dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Success:');
+                                        return data;
                                     })
                                     .catch((error) => {
                                             dbgError  ("AsyncCacheLoad: vaultbulkcacheloader: Error failed request on vaultbulkcacheloader ");
