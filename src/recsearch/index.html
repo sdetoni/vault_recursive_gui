@@ -26,6 +26,7 @@
     <!-- Recursive Search Functions and Styles -->
     <script src="js_libs/gen_funcs.js"></script>
     <script src="js_libs/debug.js"></script>
+    <script src="js_libs/vault_group_buldr_funcs.js"></script>
     <script src="js_libs/vault_export_import_json.js"></script>
     <link rel="stylesheet" href="css/search.css">
 <script defer type="text/javascript">
@@ -70,13 +71,36 @@ function vaultDumpDict (d, depth=0)
     }
 }
 
+function getVaultEmberObj ()
+{
+    var emberVaultArry = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES;
+    var emberVaultObj  = null;
+    for (var i=0; i < emberVaultArry.length; i++)
+    {
+        try
+        {
+            if (emberVaultArry[i].modulePrefix.toLowerCase() == "vault")
+            {
+                // dbgInfo ("Matched ember vault namespace!");
+                emberVaultObj = emberVaultArry[i];
+                break;
+            }
+        }
+        catch {  }
+    }
+    return emberVaultObj;
+}
+
 function vaultToken ()
 {
     let token = null;
+
     try
     {
-        token = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup("service:auth").currentToken;
-        if ((token != null) && (token != "") && (document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup("service:auth").tokenExpired))
+        let emberVaultObj = getVaultEmberObj();
+	    token = emberVaultObj.__container__.lookup("service:auth").currentToken;
+
+        if ((token != null) && (token != "") && (emberVaultObj.__container__.lookup("service:auth").tokenExpired))
         {
             clrReqCache();
             token = null;
@@ -101,8 +125,7 @@ function vaultUIGotoURI (uri, closeDialog=true)
     dbgInfo ("vaultUIGotoURI: " + p);
 
     // Vault EMBER magic code to redirect to the correct page
-    var ifr = document.getElementById(FrameID);
-    var r = ifr.contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup("controller:application").transitionToRoute (p);
+    var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute (p);
     r.followRedirects();
     VaultCurrentURL = "";
 
@@ -175,7 +198,7 @@ function vaultAbortAction ()
 
 function vault_generateCodeExample (apiURL)
 {
-    var username = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup("service:auth").authData.displayName;
+    var username = getVaultEmberObj().__container__.lookup("service:auth").authData.displayName;
     apiURL = unescape(apiURL);
     dbgInfo ("vault_generateCodeExample: " + apiURL);
     dbgInfo ("vault_generateCodeExample: " + username);
@@ -782,15 +805,18 @@ var AsyncCacheLastLoadedTime    = Date.now();
 var AsyncCacheRefreshLoadedTime = Date.now();
 var LastCacheStatus             = ""
 function clrReqCache ()
-{
-    VaultAPICache = {};
-    Cryptoe.init(16,64); // re-new the encryption key...
-    
-    if ((LastCacheStatus != "") && (LastCacheStatus != "cache-status-empty"))
+{    
+    if (VaultAPICache && (Object.keys(VaultAPICache).length > 0))
     {
-        dbgInfo ("clrReqCache: cache cleared! " + LastCacheStatus);
-        LastCacheStatus = "";
-        updateReqCacheIconStatus ();
+        VaultAPICache = {};
+        Cryptoe.init(16,64); // re-new the encryption key...
+        
+        if ((LastCacheStatus != "") && (LastCacheStatus != "cache-status-empty"))
+        {
+            dbgInfo ("clrReqCache: cache cleared! " + LastCacheStatus);
+            LastCacheStatus = "";
+            updateReqCacheIconStatus ();
+        }
     }
 }
 
@@ -3649,27 +3675,10 @@ async function BecomeAsToken (token)
 
     vaultUIGotoURI ("/vault/auth?with=token");
     await new Promise(s => setTimeout(s, 2000));
-    var maxTries = 10*2; // 10 seconds
-    var pgTst    = setInterval(function()
-    {
-        var ifr = document.getElementById(FrameID);
-        var tk  = ifr.contentWindow.document.getElementsByName('token')[0]; // find the input control
-        maxTries--;
-        if (tk)
-        {
-            clearInterval(pgTst);
-            var tkID =  $(tk).attr('id');
 
-            // Set the token input value via Ember magic code
-            ifr.contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup('-view-registry:main')[tkID].target.token = token;
-            ifr.contentWindow.document.getElementById('auth-submit').click();
-        }
-        else if (maxTries < 0)
-        {
-            clearInterval(pgTst); // give up trying to match login token input field/control
-            noteError ("Failed to login as requested token.");
-        }
-    }, 500);
+    // implement hack to fool Ember system to re-render current web page with a new token
+    getVaultEmberObj().__container__.lookup("service:auth").currentToken = token;
+    vaultUIGotoPath('');
 }
 
 function rootGenerateToken ()
@@ -4187,7 +4196,7 @@ function buildCurrentSecretPathSelectBox ()
         }
 
         // Rebuild the last item if the last item is a leaf node without a '/' in the path
-        // example if VaultCurrentURL = '/vault/secrets/systems/show/keepass/DBA/uow_db_audit'
+        // example if VaultCurrentURL = '/vault/secrets/systems/show/keepass/DBA/db_audit'
         // then option should be this: '<option value="systems/:keepass/DBA/uow_db_audit">systems/keepass/DBA/uow_db_audit</option>'
         // and NOT this:               '<option value="systems/:keepass/DBA/uow_db_audit/">systems/keepass/DBA/uow_db_audit/</option>'
         if (VaultCurrentURL.slice(-1) != FLDRCHR)
@@ -4252,7 +4261,7 @@ setInterval(function()
     try
     {
         // Update the drop down menu with the current path from VAULT's url in the EMBER document.
-        var curl = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES_BY_ID.vault.__container__.lookup("service:-routing").router.currentURL;
+        var curl = getVaultEmberObj().__container__.lookup("service:-routing").router.currentURL;
 
         // Set the username input focus
         if (curl == VaultAuthURI)
@@ -4314,16 +4323,19 @@ setInterval(function()
                 dbgInfo ("prog info onclick : " + $('#progInfo-action').attr("onclick"));
             }
                         
-            // Update root only access icons, vault-expimp-action
+            // Update root only access icons domainUsersGroups-action, vault-expimp-action
             (async () =>
             {
                 let isRoot = await vault_HasRootAccess (VaultAddr, token);         
                 if (isRoot)                        
                 {
+                    $('#domainUsersGroups-action').removeClass('disabled-icon')
                     $('#vault-expimp-action').removeClass('disabled-icon')
                 }
                 else
                 {
+                    $('#domainUsersGroups-action').removeClass('disabled-icon')
+                    $('#domainUsersGroups-action').addClass('disabled-icon'); 
 
                     $('#vault-expimp-action').removeClass('disabled-icon')
                     $('#vault-expimp-action').addClass('disabled-icon');                 
@@ -4364,6 +4376,12 @@ setInterval (function()
 // ----- Upon Document Loaded EVENT ------
 $(document).ready(function()
 {
+    // clear cached data
+    window.onbeforeunload = function() 
+    {
+        clrReqCache ()
+    };
+
     // Implement custom select menu to implement '-' menu items as menu separator as it shouold be for normal menu items
     $.widget( "custom.superSelectMenu", $.ui.selectmenu,
     {
@@ -4519,6 +4537,8 @@ function OnLoadIframeStyle ()
     AsyncCacheLoad ();    
 }
 </script>
+<script src="js_libs/customisation.js"></script>
+<link rel="stylesheet" href="css/customisation.css">
 </head>
 <body>
 <div class="PacifierModal"></div>
@@ -4610,6 +4630,7 @@ function OnLoadIframeStyle ()
                 <a id="vaultAPIExplorer"          href="#" onclick="vaultUIGotoURI('/vault/api-explorer');"      title="Programmer Vault API REST Explorer">                                         <i class="fas fa-code hover-red"></i></a>&nbsp;                
                 <a id="rootTools-action"          href="#" onclick="rootToolsActionDialog();"                    title="Root Token Generator/Revoker">                                               <i class="fas fa-code-branch fa-rotate-180 hover-red"></i></a>&nbsp;
 
+                <a id="domainUsersGroups-action" href="#" onclick="domainUsersGroupsActionDialog();"           title="AD/LDAP Domain Users/Groups Builder&#010Requires ROOT access/token">                <i class="fas fa-users-cog hover-red"></i></a>&nbsp;
                 <a id="vault-expimp-action"       href="#" onclick="vaultExportImport_JSONFormatActionDialog();" title="Export/Import Secrets from/into JSON format&#010Requires ROOT access/token"> <i class="fas fa-file-code hover-red"></i></a>&nbsp;
                 
                 &#x7c;
@@ -5048,6 +5069,140 @@ function OnLoadIframeStyle ()
 
         <!-- ############################################################################################################ -->
         
+        <div id="createDomainUsersGroupsDialog" style="font-size:10px;">
+            <table style="width:100%;height:100%" border=0>
+            <tr><td style="width:100%">
+                <table style="width:100%;height:100%;font-family:monospace;" border=0>
+                
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label id="ugDomainOfEntityLbl" for="ugDomainNameOfEntity">Enter <b><span id="ugDomainNameOfEntityLbl_type">Domain  Name</span></b>:</label>
+                    </td>
+                    <td>
+                        <input type="input" id="ugDomainNameOfEntity" placeholder="Enter AD/LDAP Domain name" style="display:table-cell;width:100%;background-color:#CFC503;">
+                    </td>
+                </tr>
+                
+                <tr><td colspan="100%"><hr></td></tr>
+                
+                <tr>
+                    <td style="white-space:nowrap" colspan="100%">
+                        <u>Add AD/LDAP Users/Groups to Vault</u>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label for="ugSelection">Build Mode:</label>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <input type="radio" id="ugGroupMode" name="ugSelection" value="group" onclick="$('#ugNameOfEntityLbl_type').html('AD Group')"><Label for="ugGroupMode">Domain <b>AD/LDAP Group</b></label>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td></td>
+                    <td style="white-space:nowrap;">
+                        <input type="radio" id="ugUserMode"  name="ugSelection" value="user"  onclick="$('#ugNameOfEntityLbl_type').html('AD User')"><Label for="ugUserMode">Domain <b>AD/LDAP User</b></label>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label id="ugNameOfEntityLbl" for="ugNameOfEntity">Enter Domain <b><span id="ugNameOfEntityLbl_type">AD/LDAP User or Group</span></b>:</label>
+                    </td>
+                    <td>
+                        <input type="input" id="ugNameOfEntity" placeholder="User, or Group to grant access" onkeyup="$('#ugMountPointOfEntity').val($('#ugNameOfEntity').val())" style="display:table-cell;width:100%;background-color:#b4caff;">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label id="ugMountPointOfEntityLbl" placeholder="Secrets mount point to create, or existing mount point" for="ugMountPointOfEntity">Enter Mount Point Name:</label>
+                    </td>
+                    <td>
+                        <input type="input" id="ugMountPointOfEntity" placeholder="if it differs from User, or Group" style="display:table-cell;width:100%;background-color:#b4caff;">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label>Authentication Method:</label>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <input type="checkbox" id="ugAuthLDAP" checked><label for="ugAuthLDAP">LDAP/Active Directory<label>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td></td>
+                    <td style="white-space:nowrap;">
+                        <input type="checkbox" id="ugAuthOIDC" checked><label for="ugAuthOIDC">OIDC/SAML (Single Sign On)<label>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;white-space:nowrap">
+                        <button class="ui-button ui-corner-all ui-widget" onclick="domainUsersGroupsAdd($('#ugDomainNameOfEntity').val())" style="font-family:monospace;color:white;background-color:blue;width:120px;">Add Access</button>
+                    </td>
+                </tr>
+
+                <tr><td colspan="100%"><hr></td></tr>
+                <tr>
+                    <td style="white-space:nowrap" colspan="100%">
+                        <u>Remove Domain AD/LDAP Users/Groups from Vault</u>
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label id="ugRemoveNameOfEntityLbl" for="ugRemoveNameOfEntity">Enter Domain <b>AD User or Group</b>:</label>
+                    </td>
+                    <td>
+                        <input type="input" id="ugRemoveNameOfEntity" placeholder="User, or Group to remove access" onkeyup="$('#ugRemoveMountPointOfEntity').val($('#ugRemoveNameOfEntity').val())" style="display:table-cell;width:100%;background-color:#f2b9b9;">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="white-space:nowrap;vertical-align: top;">
+                        <label id="ugRemoveMountPointOfEntityLbl" placeholder="Secrets mount point to remove access" for="ugRemoveMountPointOfEntity">Enter Mount Point Name:</label>
+                    </td>
+                    <td>
+                        <input type="input" id="ugRemoveMountPointOfEntity" placeholder="if it differs from User, or Group" style="display:table-cell;width:100%;background-color:#f2b9b9;">
+                    </td>
+                </tr>
+
+                <tr>
+                    <td></td>
+                    <td style="text-align:right;white-space:nowrap">
+                        <button class="ui-button ui-corner-all ui-widget" onclick="domainUsersGroupsRemoveConfirm($('#ugDomainNameOfEntity').val())" style="font-family:monospace;color:white;background-color:red;width:120px;">Remove Access</button>
+                    </td>
+                </tr>
+
+                </table>
+            </td></tr>
+
+            <tr><td style="width:100%;height:100%">
+                <table style="width:100%;height:100%" border=0>
+                <tr>
+                    <td>
+                        <a href="#" onclick="$('#textarea_usersGroupsOutput').val('');" title="Clear Output"><i class="fas fa-broom hover-red"></i></a>
+                        <a title='Copy Output to Clipboard' class='fas fa-copy hover-red' onclick="gfCopyToClipboard($('#textarea_usersGroupsOutput').val()); noteNorm('Output copied to Clipboard');" href='#'></a>
+                        Output:
+                    </td>
+                </tr>
+                <tr>
+                    <td height="100%"><textarea id="textarea_usersGroupsOutput" cols="80" rows="15" style="font-family:monospace;width:100%;height:100%;white-space:pre" readonly></textarea></td>
+                </tr>
+                </table>
+            </td></tr>
+
+            </table>
+        </div>
+
+        <!-- ############################################################################################################ -->
+        
         <div id="removeConfirmDialog">
             <table style="width:100%;height:100%">
                 <tr><td>&nbsp;</td></tr>
@@ -5143,6 +5298,4 @@ function OnLoadIframeStyle ()
     <tr height="100%"><td>
         <iframe id="vaultIFrame" onload="OnLoadIframeStyle();" src=''>
     </td></tr>
-</table>
-</body>
-</html>
+</table></body></html>
