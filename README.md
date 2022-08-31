@@ -59,12 +59,7 @@ Web Client Debug Mode
 Press F12 (Chrome or Firefox) to enter debug mode, and select the Console tab to view Javascript information.
 
 
-
-
-
-
-
-
+<pre>
 -------------------------------------------------------------------------------------------
 Vault Raft Config
 -----------------
