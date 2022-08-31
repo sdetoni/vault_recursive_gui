@@ -162,33 +162,22 @@ function domainUsersGroupsAdd (domainName)
         }
         
         dugOutput ("---------------------------------------------------");
-               
-        // Check auth systems are in place
-        var ldapAccessor = null;
-        var oidcAccessor = null;
-        try { ldapAccessor = authList["ldap/"]["accessor"]; } catch { };
-        try { oidcAccessor = authList["oidc/"]["accessor"]; } catch { };
-        
-        if (createOIDCAuthLink && !oidcAccessor)
-        {
-            var m = "Unable to continue, oidc authentication method not present!";
-            dugOutput (m);
-            noteError (m);            
-            return;            
-        }
-        
-        if (createLDAPAuthLink && !ldapAccessor)
-        {
-            var m = "Unable to continue, ldap authentication method not present!";
-            dugOutput (m);
-            noteError (m);            
-            return;            
-        }
-        
+                 
         // Obtain the group list 
         var groupsListURL = VaultAddr + '/v1/identity/group/id?list=true';
         var groupsList = await fetch(groupsListURL, { method: 'GET', headers: { "x-vault-token" : token }, cache: 'no-cache'
-                                                    }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + groupsListURL); return null; });
+                                                    })
+                                                    .then(response => response.json())
+                                                    .then(data => 
+                                                    { 
+                                                        if (data.hasOwnProperty("errors"))
+                                                        {
+                                                            dbgError  ("domainUsersGroupsAdd: Error failed request on " + groupsListURL + " : " + data["errors"]);
+                                                            return null;
+                                                        }
+                                                        return data; 
+                                                    })
+                                                    .catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + groupsListURL); return null; });
         if (! groupsList)
         {
             var m = "Failed to load group list!'";
@@ -203,7 +192,17 @@ function domainUsersGroupsAdd (domainName)
         // Create/Update the policy 
         var policyURL = VaultAddr + '/v1/sys/policies/acl/' + entityName;
         var policyData = await fetch(policyURL, { method: 'GET', headers: { "x-vault-token" : token }, cache: 'no-cache'
-                                                }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + policyURL); return null; });
+                                                }).then(response => response.json())
+                                                .then(data => 
+                                                { 
+                                                    if (data.hasOwnProperty("errors"))
+                                                    {
+                                                        dbgError  ("domainUsersGroupsAdd: Error failed request on " + policyURL + " : " + data["errors"]);
+                                                        return null;
+                                                    }
+                                                    return data; 
+                                                })
+                                                .catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + policyURL); return null; });
 
         var ts = new Date().toISOString();
         var policyCreateUpdate = { "name" : mountName, "policy" : "" };
@@ -254,6 +253,29 @@ function domainUsersGroupsAdd (domainName)
         var authListURL = VaultAddr + '/v1/sys/auth';        
         var authList = await fetch(authListURL, { method: 'GET', headers: { "x-vault-token" : token }, cache: 'no-cache'
                                                 }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + authListURL); return null; });
+                                                
+        // Check auth systems are in place
+        var ldapAccessor = null;
+        var oidcAccessor = null;
+        try { ldapAccessor = authList["ldap/"]["accessor"]; } catch { };
+        try { oidcAccessor = authList["oidc/"]["accessor"]; } catch { };
+
+        if (createOIDCAuthLink && !oidcAccessor)
+        {
+            var m = "Unable to continue, oidc authentication method not present!";
+            dugOutput (m);
+            noteError (m);            
+            return;            
+        }
+        
+        if (createLDAPAuthLink && !ldapAccessor)
+        {
+            var m = "Unable to continue, ldap authentication method not present!";
+            dugOutput (m);
+            noteError (m);            
+            return;            
+        }
+    
         if (! authList)
         {
             var m = "Failed loading authentication accessors!";
@@ -274,12 +296,33 @@ function domainUsersGroupsAdd (domainName)
             var entityID             = null;
             var entityLDAP = await fetch(entityLookupURL, { method: 'POST', headers: { "x-vault-token" : token }, cache: 'no-cache'
                                                             , body:   JSON.stringify({"alias_name" : ldapEntityName, "alias_mount_accessor" :  ldapAccessor })
-                                                          }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
+                                                          }).then(response => response.json())
+                                                          .then(data => 
+                                                          { 
+                                                              if (data.hasOwnProperty("errors"))
+                                                              {
+                                                                  dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL + " : " + data["errors"]);
+                                                                  return null;
+                                                              }
+                                                              return data; 
+                                                          })
+                                                          .catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
                                         
             var oidcEntityName = domainName + "\\" + entityName;
             var entityOIDC = await fetch(entityLookupURL, { method: 'POST', headers: { "x-vault-token" : token }, cache: 'no-cache'
                                                             , body:   JSON.stringify({"alias_name" : oidcEntityName, "alias_mount_accessor" :  oidcAccessor })
-                                                          }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
+                                                          })
+                                                          .then(response => response.json())
+                                                          .then(data => 
+                                                          { 
+                                                              if (data.hasOwnProperty("errors"))
+                                                              {
+                                                                  dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL + " : " + data["errors"]);
+                                                                  return null;
+                                                              }
+                                                              return data; 
+                                                          })
+                                                          .catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
                                         
             if (entityLDAP)
             {
@@ -717,29 +760,7 @@ function domainUsersGroupsRemove (domainName)
         }
         
         dugOutput ("---------------------------------------------------");    
-                
-        // Check auth systems are in place
-        var ldapAccessor = null;
-        var oidcAccessor = null;
-        try { ldapAccessor = authList["ldap/"]["accessor"]; } catch { };
-        try { oidcAccessor = authList["oidc/"]["accessor"]; } catch { };
-        
-        if (createOIDCAuthLink && !oidcAccessor)
-        {
-            var m = "Unable to continue, oidc authentication method not present!";
-            dugOutput (m);
-            noteError (m);            
-            return;            
-        }
-        
-        if (createLDAPAuthLink && !ldapAccessor)
-        {
-            var m = "Unable to continue, ldap authentication method not present!";
-            dugOutput (m);
-            noteError (m);            
-            return;            
-        }
-        
+                                
         // Obtain the group list 
         var groupsListURL = VaultAddr + '/v1/identity/group/id?list=true';
         var groupsList = await fetch(groupsListURL, { method: 'GET', headers: { "x-vault-token" : token }, cache: 'no-cache'
@@ -766,6 +787,12 @@ function domainUsersGroupsRemove (domainName)
             return;
         }
 
+        // Check auth systems are in place
+        var ldapAccessor = null;
+        var oidcAccessor = null;
+        try { ldapAccessor = authList["ldap/"]["accessor"]; } catch { };
+        try { oidcAccessor = authList["oidc/"]["accessor"]; } catch { };
+        
         dbgTrace ("domainUsersGroupsRemove policies List " + JSON.stringify(groupsList,null,'    '));
        
         // Create/Update the policy 
@@ -875,12 +902,32 @@ function domainUsersGroupsRemove (domainName)
         var entityOIDCid    = null;
         var entityLDAP = await fetch(entityLookupURL, { method: 'POST', headers: { "x-vault-token" : token }, cache: 'no-cache'
                                                         , body:   JSON.stringify({"alias_name" : ldapEntityName, "alias_mount_accessor" :  ldapAccessor })
-                                                      }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
+                                                      })
+                                                      .then(response => response.json())
+                                                      .then(data => 
+                                                      { 
+                                                          if (data.hasOwnProperty("errors"))
+                                                          {
+                                                              dbgError  ("domainUsersGroupsRemove: Error failed request on " + entityLookupURL + " : " + data["errors"]);
+                                                              return null;
+                                                          }
+                                                          return data; 
+                                                      }).catch((error) => { dbgError  ("domainUsersGroupsRemove: Error failed request on " + entityLookupURL); return null; });
                                     
         var oidcEntityName = domainName + "\\" + entityName;
         var entityOIDC = await fetch(entityLookupURL, { method: 'POST', headers: { "x-vault-token" : token }, cache: 'no-cache'
                                                         , body:   JSON.stringify({"alias_name" : oidcEntityName, "alias_mount_accessor" :  oidcAccessor })
-                                                      }).then(response => response.json()).then(data => { return data; }).catch((error) => { dbgError  ("domainUsersGroupsAdd: Error failed request on " + entityLookupURL); return null; });
+                                                      })
+                                                      .then(response => response.json())
+                                                      .then(data => 
+                                                      { 
+                                                          if (data.hasOwnProperty("errors"))
+                                                          {
+                                                              dbgError  ("domainUsersGroupsRemove: Error failed request on " + entityLookupURL + " : " + data["errors"]);
+                                                              return null;
+                                                          }
+                                                          return data;                                                       
+                                                      }).catch((error) => { dbgError  ("domainUsersGroupsRemove: Error failed request on " + entityLookupURL); return null; });
                                     
         if (entityLDAP)
         {
