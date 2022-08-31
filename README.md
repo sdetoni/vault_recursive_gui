@@ -146,6 +146,8 @@ vrrp_instance VIP_VAULT_HA {
 
 Vault Example Scripts Node1
 ---------------------------
+$ cat /etc/vault.d/vault.hcl
+
 # Full configuration options can be found at https://www.vaultproject.io/docs/configuration
 
 ui = true                     #Enables the built-in web UI, which is available on all listeners (address + port)
@@ -207,6 +209,8 @@ seal "transit" {
 
 Vault Example Scripts Node2
 ---------------------------
+$ cat /etc/vault.d/vault.hcl
+
 # Full configuration options can be found at https://www.vaultproject.io/docs/configuration
 
 ui = true                     #Enables the built-in web UI, which is available on all listeners (address + port)
@@ -268,6 +272,8 @@ seal "transit" {
 
 Vault Example Scripts Node3
 ---------------------------
+$ cat /etc/vault.d/vault.hcl
+
 # Full configuration options can be found at https://www.vaultproject.io/docs/configuration
 
 ui = true                     #Enables the built-in web UI, which is available on all listeners (address + port)
@@ -726,6 +732,8 @@ vault.blah.com  {
 
 Caddy Load Balancer Config (unseal node)
 ----------------------------------------
+$ cat /etc/caddy/Caddyfile
+
 # Disable administration API
 # Probably shouldn't be used unless you can guarantee only trusted users can log in locally on server
 {
