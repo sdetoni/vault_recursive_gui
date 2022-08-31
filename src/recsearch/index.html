@@ -933,15 +933,15 @@ function AsyncCacheLoad ()
                                         headers: { "x-vault-token" : token },
                                         cache: 'no-cache'
                                     })
-                                    .then(response => {
-                                        if (response.status != 200)
-                                            dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Failure :' + response.status + ' : ' + response.url);
-                                            return null;
-                                        return response.json()
-                                     })
-                                    .then(data => {
-                                        if (data)
+                                    .then((response) => response.json())
+                                    .then(data => {                                         
+                                        if (data && !(data.hasOwnProperty("errors")))
                                             dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Success:');
+                                        else
+                                        {
+                                            dbgInfo('AsyncCacheLoad: vaultbulkcacheloader Failure!');
+                                            return null;
+                                        }
                                         return data;
                                     })
                                     .catch((error) => {
