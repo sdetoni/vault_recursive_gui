@@ -70,12 +70,12 @@ This note will describe the network topology, and from there provide example Cad
 
 Example/Expected Topology under Linux:
 
-                                                      [Keepalived Virtual IP : vault.blah.com 192.168.1.10]
-                                                                             |
-                                                          [ip floats between active raft leader node]
-                                                                             |
-            +----------------------------------------------------------------+-----------------------------------------------------------+
-            |                                                                |                                                           |
+                                                          [Keepalived Virtual IP : vault.blah.com 192.168.1.10]
+                                                                                 |
+                                                               [ip floats between active raft leader node]
+                                                                                 |
+            +--------------------------------------------------------------------+----------------------------------------------------------------------+
+            |                                                                    |                                                                      |
 [vault-node1.blah.com : 192.168.1.11] <- load bal vault:8200      -> [vault-node2.blah.com : 192.168.1.12]  <- load bal vault:8200      -> [vault-node2.blah.com : 192.168.1.13]                        
                         |             <- load bal vaultbulk:16180 ->             |                          <- load bal vaultbulk:16180 ->                      |
                         |             <- raft proto:8201          ->             |                          <- raft proto:8201          ->                      |
