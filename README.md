@@ -2,7 +2,7 @@
 HasiCorp Vault Recursive GUI overlay
 
 The project implements a GUI over the top of the built in Vault GUI.
-It does this using a reverse project and wedging in the Vault GUI using an I-Frame.
+It does this using a reverse web proxy, and wedges in the Vault GUI using an I-Frame.
 The vault_recursive_gui uses standard Vault API calls to recursively search a Vault 
 repository on KV2 type secret mount points based upon the logged in user's policies.
 Once Vault secrets have been searched or pre-cached, they're stored locally in the client
