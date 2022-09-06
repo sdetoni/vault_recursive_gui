@@ -70,7 +70,7 @@ Press F12 (Chrome or Firefox) to enter debug mode, and select the Console tab to
 
 
 ## Vault Raft Proxy Caddy Config
-[a relative link](src/raft_config/raft_proxy_caddy.txt)
+[raft_proxy_caddy.txt](src/raft_config/raft_proxy_caddy.txt)
 
 ## Why 'Vault Recursive GUI'?
 Vault Recursive GUI does not replace the standard Vault GUI, it adds to it. 
