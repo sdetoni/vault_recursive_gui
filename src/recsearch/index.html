@@ -366,7 +366,8 @@ function vault_makeFolderLink (text, id, isEndFolder, apiURL, secretVersion, sec
     s += "<a title='Goto Vault Item' class='fas fa-link vgoto-link1'      onclick='vaultUIGotoURI(\"" + escape(vault_apiURLtoPath (apiURL)) + "\");' href='#'></a>&nbsp;";
 
     s += "<a id='" + id + "_1" + "'  title='Admin Features' class='fas fa-angle-double-right vgoto-link1' onclick='nodeShowAdminIcons(\"" + id + "\");' href='#'>&nbsp;</a>";
-    s += "<span  id='" + id + "_2" + "' class='stree-admenu'>";
+    s += "<span  id='" + id + "_2" + "' class='stree-admenu'>";    
+    s += "<a title='Copy Folder Name into Clipboard' class='far fa-copy vgoto-link1' onclick='gfCopyToClipboard(\"" + escape(text) + "\");noteNorm( String.fromCharCode(39)+ \"" + escape(text) + "\" +  String.fromCharCode(39) + \" data copied into clipboard\");' href='#'></a>&nbsp;";    
     s += "<a title='Clone/Move/Rename Folder' class='fas fa-folder vgoto-link1' onclick='cloneMoveActionDialog (\"" + escape(secretName + secretPath) + "\");' href='#'></a>&nbsp;";
 
     if (isEndFolder)
