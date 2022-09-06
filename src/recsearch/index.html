@@ -1862,7 +1862,7 @@ function runSearch (secretNamePath = null)
     }
 
     //var srchTxt = $('#vault_search').val();
-    var srchTxt = $('#vault_search').next().find('input').val();
+    var srchTxt = gfTrim($('#vault_search').next().find('input').val(), ' ');
 
     dbgInfo ("runSearch: BaseName  : " + baseName);
     dbgInfo ("runSearch: BasePath  : " + basePath);
