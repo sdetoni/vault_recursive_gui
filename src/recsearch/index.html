@@ -118,6 +118,18 @@ function vaultIsFolderPath (path)
     return path.endsWith(FLDRCHR);
 }
 
+function vaultMakeDeepLinkURL (uri)
+{
+    return  VaultAddr + window.location.pathname + '?goto=' + escape(uri);
+}
+
+function vaultDoDeepLinkURL (uri)
+{
+    var u = vaultMakeDeepLinkURL(uri); 
+    gfCopyToClipboard(u);  
+    noteNorm( String.fromCharCode(39)+ u + String.fromCharCode(39) + " copied into clipboard");
+}
+
 function vaultUIGotoURI (uri, closeDialog=true)
 {
     var p =  unescape(uri);
@@ -367,7 +379,8 @@ function vault_makeFolderLink (text, id, isEndFolder, apiURL, secretVersion, sec
 
     s += "<a id='" + id + "_1" + "'  title='Admin Features' class='fas fa-angle-double-right vgoto-link1' onclick='nodeShowAdminIcons(\"" + id + "\");' href='#'>&nbsp;</a>";
     s += "<span  id='" + id + "_2" + "' class='stree-admenu'>";    
-    s += "<a title='Copy Folder Name into Clipboard' class='far fa-copy vgoto-link1' onclick='gfCopyToClipboard(\"" + escape(text) + "\");noteNorm( String.fromCharCode(39)+ \"" + escape(text) + "\" +  String.fromCharCode(39) + \" copied into clipboard\");' href='#'></a>&nbsp;";    
+    s += "<a title='Copy Deep Link URL Folder Path into Clipboard' class='fas fa-external-link-alt vgoto-link1' onclick='vaultDoDeepLinkURL (\"" + escape(secretName+secretPath) + "\");' href='#'></a>&nbsp;"; 
+    s += "<a title='Copy Folder Name into Clipboard' class='far fa-copy vgoto-link1' onclick='gfCopyToClipboard(\"" + escape(text) + "\");noteNorm( String.fromCharCode(39)+ \"" + escape(text) + "\" +  String.fromCharCode(39) + \" copied into clipboard\");' href='#'></a>&nbsp;";       
     s += "<a title='Clone/Move/Rename Folder' class='fas fa-folder vgoto-link1' onclick='cloneMoveActionDialog (\"" + escape(secretName + secretPath) + "\");' href='#'></a>&nbsp;";
 
     if (isEndFolder)
@@ -871,7 +884,8 @@ function chkReqCache (token)
     })();
 }
 
-var ShowSearchTools = false;
+var ShowSearchTools   = false;
+var URLGotoActionTest = true;
 function AsyncCacheLoad ()
 {    
     // check if token is current...
@@ -891,6 +905,15 @@ function AsyncCacheLoad ()
         $(".ShowSearchTools").show(800, "swing");
         $("#vault_search").next().find('input').focus();
         ShowSearchTools = true;
+         
+        // parse url search parameters, and jump to page upon first load/login into Vault
+        if (URLGotoActionTest)        
+        {
+            URLGotoActionTest = false;
+            let vp = gfGetParameterByName("goto");
+            if (vp)
+                vaultUIGotoPath (vp);
+        }
 
         // Wait for #search-tools-width to be fully rendered to get its actual width as this can vary significantly while a page is loading!
         setTimeout(function() {
@@ -4642,7 +4665,8 @@ function OnLoadIframeStyle ()
                 
                 &#x7c;
 
-                <a id=""                          href="#" onclick="gfRefreshIFramePage();"     title="Refresh Web Page"><i class="fas fa-sync hover-red"></i></a>&nbsp;
+                <a id=""                          href="#" onclick="let p = vault_pathURLtoNamePath (VaultCurrentURL); vaultDoDeepLinkURL (decodeURI(p[0]+p[1]));"     title="Copy Deep Link URL Folder Path into Clipboard"><i class="fas fa-external-link-alt"></i></a>&nbsp;
+                
                 <a id=""                          href="#" onclick="noteNorm(AUTHOR, 8000);"    title="About Vault GUI Helper"><i class="fas fa-info-circle hover-red"></i></a>&nbsp;
                 <a id=""                          href="/ui"                                    title="No GUI Helper"><i class="fas fa-window-close hover-red"></i></a>&nbsp;
 
