@@ -1,7 +1,5 @@
 # vault_recursive_gui
-HasiCorp Vault Recursive GUI overlay
-https://github.com/sdetoni/vault_recursive_gui
-
+<a href="https://github.com/sdetoni/vault_recursive_gui">HasiCorp Vault Recursive GUI overlay</a>
 
 The project implements a GUI over the top of the built in Vault GUI.
 It does this using a reverse web proxy, and wedges in the Vault GUI using an I-Frame.
