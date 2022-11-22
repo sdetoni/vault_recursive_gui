@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Created using XmlSitemapGenerator.org - Free HTML, RSS and XML sitemap generator-->
+<rss version="2.0">
+  <channel>
+    <title>-</title>
+    <link>https://sdetoni.github.io/vault_recursive_gui/</link>
+    <description />
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui</link>
+      <description />
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/</link>
+      <title>vault_recursive_gui | HasiCorp Vault Recursive GUI Overlay</title>
+      <description>HasiCorp Vault Recursive GUI Overlay</description>
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/src/raft_config/raft_proxy_caddy.txt</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/src/raft_config/raft_proxy_caddy.txt</link>
+      <description />
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/screenshots/logged_in.png</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/screenshots/logged_in.png</link>
+      <description />
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/screenshots/search.png</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/screenshots/search.png</link>
+      <description />
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/screenshots/example_code.png</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/screenshots/example_code.png</link>
+      <description />
+    </item>
+    <item>
+      <guid>https://sdetoni.github.io/vault_recursive_gui/screenshots/clone.png</guid>
+      <link>https://sdetoni.github.io/vault_recursive_gui/screenshots/clone.png</link>
+      <description />
+    </item>
+  </channel>
+</rss>
