@@ -312,9 +312,6 @@ vault-node1.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -333,8 +330,9 @@ vault-node1.blah.com  {
 
     # Proxy all traffic over HTTP to Vault on 8200
     reverse_proxy https://vault-node1.blah.com:8200 {
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
@@ -362,9 +360,6 @@ vault.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -399,8 +394,9 @@ vault.blah.com  {
         health_body      initialized":true.*"sealed":false.*
         health_interval  30s
 
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
@@ -444,9 +440,6 @@ vault-node2.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -465,8 +458,9 @@ vault-node2.blah.com  {
 
     # Proxy all traffic over HTTP to Vault on 8200
     reverse_proxy https://vault-node2.blah.com:8200 {
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
@@ -494,9 +488,6 @@ vault.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -531,8 +522,9 @@ vault.blah.com  {
         health_body      initialized":true.*"sealed":false.*
         health_interval  30s
 
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
@@ -576,9 +568,6 @@ vault-node3.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -597,8 +586,9 @@ vault-node3.blah.com  {
 
     # Proxy all traffic over HTTP to Vault on 8200
     reverse_proxy https://vault-node3.blah.com:8200 {
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
@@ -626,9 +616,6 @@ vault.blah.com  {
 
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
 
     # file location for the javascript based recursive search html doc
@@ -663,8 +650,9 @@ vault.blah.com  {
         health_body      initialized":true.*"sealed":false.*
         health_interval  30s
 
-        # remove header Content-Security-Policy from proxy return, replace it with the one in header override
-        header_down -Content-Security-Policy
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
     }
 
     # SSL Cert
