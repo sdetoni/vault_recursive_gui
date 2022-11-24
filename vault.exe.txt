@@ -1,1 +1,1 @@
- Download Vault     https://releases.hashicorp.com/vault/1.11.2/vault_1.11.2_windows_amd64.zip
+ Download Vault     https://releases.hashicorp.com/vault/1.12.1/vault_1.12.1_windows_amd64.zip

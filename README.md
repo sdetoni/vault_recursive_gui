@@ -35,23 +35,30 @@ Example Software Stack
 Download NodeJS, Caddy, and Vault:
 - NodeJS    https://nodejs.org/dist/v16.17.0/node-v16.17.0-win-x64.zip
 - Caddy     https://caddyserver.com/download
-- Vault     https://releases.hashicorp.com/vault/1.11.2/vault_1.11.2_windows_amd64.zip
+- Vault     https://releases.hashicorp.com/vault/1.12.1/vault_1.12.1_windows_amd64.zip
        
-Review boot.cmd to see boot sequence.
+Review boot.cmd to see boot sequence:
+  - refer to file **vault-recovery-keys-root-token.json** for **root_token**
+  - Once services have booted, access vault via **https://127.0.0.1** 
+  - Login using method **token** and paste in the token password
 
 -------------------------------------------------------------------------------------------
 
 Caddyfile Reverse Proxy:
-    Take note of the Caddyfile that overrides a header to handle SAMEORIGIN restrictions.
+    Take note of the Caddyfile that overrides a header to handle restrictions.
     This is so it can implement an i-frame from the same server.
     
 ```caddy    
     # override vault about iframe restrictions and allow it for from the same server.
     header {
-        label1 Access-Control-Allow-Origin "*"
-        label1 X-Frame-Options "SAMEORIGIN"
-        label1 Content-Security-Policy "frame-ancestors 'self';"
     }
+    
+    reverse_proxy  https://127.0.0.1:8200 {
+        
+        # Update  header Content-Security-Policy from proxy return, replace it with the one in header override
+        # original header:  content-security-policy "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'none'; font-src 'self'"
+        header_down   content-security-policy  "default-src 'none'; connect-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'unsafe-inline' 'self'; form-action  'none'; frame-ancestors 'self'; font-src 'self'"
+    }    
 ```
 -------------------------------------------------------------------------------------------
        
