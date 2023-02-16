@@ -501,43 +501,59 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
                 var leafData = null;
                 if (version == '1')
                 {
-                    keyURL = addr + '/v1/' + encodeURI(name + path + k);
-                    var leafNode = null;
-                    var cache = await getReqCache (keyURL);
-                    if (cache[0])
-                        leafNode = cache[1];
-                    else
-                    {
-                        dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 3! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
-                        return (null);
-                    }
+                    try
+                    {                       
+                        keyURL = addr + '/v1/' + encodeURI(name + path + k);
+                        var leafNode = null;
+                        var cache = await getReqCache (keyURL);
+                        if (cache[0])
+                            leafNode = cache[1];
+                        else
+                        {
+                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 3! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
+                            return (null);
+                        }
 
-                    if ((! leafNode) || ("errors" in leafNode))
-                    {
-                        dbgError ("vault_FetchQueryKVSecrets: leafNode(1) is NULL!");
-                        continue; // return ([listURL, rtnData]);
+                        if ((! leafNode) || ("errors" in leafNode))
+                        {
+                            dbgError ("vault_FetchQueryKVSecrets: leafNode(1) is NULL!");
+                            continue; // return ([listURL, rtnData]);
+                        }
+                        leafData = leafNode['data']
                     }
-                    leafData = leafNode['data']
+                    catch (error)
+                    {
+                        dbgInfo ("MATCH ERROR matchFolderType[1]: " + error.message);
+                        leafData = null;
+                    }                        
                 }
                 else if (version == '2')
                 {
-                    keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
-                    var leafNode = null;
-                    var cache = await getReqCache (keyURL);
-                    if (cache[0])
-                        leafNode = cache[1];
-                    else
-                    {
-                        dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 4! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
-                        return (null);
-                    }
+                    try
+                    {                     
+                        keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
+                        var leafNode = null;
+                        var cache = await getReqCache (keyURL);
+                        if (cache[0])
+                            leafNode = cache[1];
+                        else
+                        {
+                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 4! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
+                            return (null);
+                        }
 
-                    if ((! leafNode) || ("errors" in leafNode))
-                    {
-                        dbgError ("vault_FetchQueryKVSecrets: leafNode(2) is NULL! '" + keyURL + "'");
-                        continue; // return ([listURL, rtnData]);
+                        if ((! leafNode) || ("errors" in leafNode))
+                        {
+                            dbgError ("vault_FetchQueryKVSecrets: leafNode(2) is NULL! '" + keyURL + "'");
+                            continue; // return ([listURL, rtnData]);
+                        }
+                        leafData = leafNode['data']['data']
                     }
-                    leafData = leafNode['data']['data']
+                    catch (error)
+                    {
+                        dbgInfo ("MATCH ERROR matchFolderType[2]: " + error.message);
+                        leafData = null;
+                    }                        
                 }
 
                 if (! leafData)
