@@ -218,7 +218,7 @@ async function vaultExportInput_write_item  (addr, token, name, path, jsonData)
     // write data here ...
     var writeURL  = addr;
     var writePath = path;    
-    writeURL = writeURL + '/v1/' + encodeURI(name + 'data/' + writePath);
+    writeURL = writeURL + '/v1/' + gfURLEncode(name + 'data/' + writePath);
 
     var secretJSON = '{"data":' + JSON.stringify(jsonData) + '}';
     var writeSuccess = await fetch(writeURL, {

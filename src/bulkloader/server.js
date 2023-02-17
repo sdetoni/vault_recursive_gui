@@ -81,6 +81,41 @@ function gfCRC32 (str, hexOutput=false) {
     return v;
 };
 
+function gfURLEncode (url)
+{
+    var tempArray        = decodeURIComponent(url).split("?");
+    var baseURL          = tempArray[0];
+
+    var baseParts        = baseURL.split("://")
+    var basePath         = null;
+
+    if (baseParts.length > 1)
+        basePath = baseParts[1];
+    else
+        basePath = baseParts[0];
+
+    var pathParts = basePath.split('/');
+    var newPath   = ''
+    for (var idx = 0; idx < basePath.length; idx++ )
+    {
+        if (basePath[idx].indexOf('/') >= 0)
+            newPath += basePath[idx];
+        else
+            newPath += encodeURIComponent(basePath[idx]);
+    }
+
+    var newURL = '';
+    if (baseParts.length > 1)
+        newURL = baseParts[0] + '://';
+
+    newURL += newPath;
+
+    if (tempArray.length > 1)
+        newURL += '?' + encodeURI(tempArray[1]);
+
+    return newURL;
+}
+
 //Taken from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
 function escapeRegExp(string) {
   return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
@@ -165,6 +200,7 @@ function ProcessNodeJSLoadRequest (req, res)
     var VaultAPIPending  = { };
     
 // ==== copy/replace these functions without alterations from project: vault_recursive_search ====
+// ======================================= Start of vaultbulkloader Insert =========================================
 
 function submitVaultAPIRequest (token, url, clrCacheOnError=false, vaultAPIPendingDict=null)
 {
@@ -279,8 +315,6 @@ async function getReqCache (url)
             }
 
             var data =  await Cryptoe.decrypt(VaultAPICache[url]["json"]);
-            // var data = VaultAPICache[url]["json"];
-
             // if (url.match("^http.*"))
             //     dbgInfo ("getReqCache: data loaded " + url);
             return [true, data];
@@ -305,9 +339,7 @@ async function addReqCache (url, data, vaultAPIPendingDict=null)
         new Promise(function(resolve, reject)
         {
             resolve(Cryptoe.encrypt(data));
-            // resolve(data);
         }).then (encyptedData => {
-            updateReqCacheIconStatus ();
             VaultAPICache[url] = { "json":encyptedData, timestamp:Date.now() };
 
             // dbgInfo ("submitVaultAPIRequest: removing VaultAPIPending " + url);
@@ -318,15 +350,18 @@ async function addReqCache (url, data, vaultAPIPendingDict=null)
 
 var LastCacheStatus             = ""
 function clrReqCache ()
-{
-    VaultAPICache = {};
-    Cryptoe.init(16,64); // re-new the encryption key...
-
-    if ((LastCacheStatus != "") && (LastCacheStatus != "cache-status-empty"))
+{    
+    if (VaultAPICache && (Object.keys(VaultAPICache).length > 0))
     {
-        dbgInfo ("clrReqCache: cache cleared! " + LastCacheStatus);
-        LastCacheStatus = "";
-        updateReqCacheIconStatus ();
+        VaultAPICache = {};
+        Cryptoe.init(16,64); // re-new the encryption key...
+        
+        if ((LastCacheStatus != "") && (LastCacheStatus != "cache-status-empty"))
+        {
+            dbgInfo ("clrReqCache: cache cleared! " + LastCacheStatus);
+            LastCacheStatus = "";
+            updateReqCacheIconStatus ();
+        }
     }
 }
 
@@ -350,9 +385,9 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
         // vault kv list <name>
         // list keys call
         if (version == '1')
-            listURL = listURL + '/v1/' + encodeURI(name + path) + '?list=true'
+            listURL = listURL + '/v1/' + gfURLEncode(name + path) + '?list=true'
         else if (version == '2')
-            listURL = listURL + '/v1/' + encodeURI(name + 'metadata/' + path) + '?list=true';
+            listURL = listURL + '/v1/' + gfURLEncode(name + 'metadata/' + path) + '?list=true';
         else
             return (null);
 
@@ -421,14 +456,14 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
             var keyURL = '';
             if (version == '1')
             {
-                keyURL = addr + '/v1/' + encodeURI(name + path + k);
+                keyURL = addr + '/v1/' + gfURLEncode(name + path + k);
                 var cache = await getReqCache (keyURL);
                 if (! cache[0])
                     submitVaultAPIRequest (token, keyURL, false);
             }
             else if (version == '2')
             {
-                keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
+                keyURL = addr + '/v1/' + gfURLEncode(name + 'data/' + path + k);
                 var cache = await getReqCache (keyURL);
                 if (! cache[0])
                     submitVaultAPIRequest (token, keyURL, false);
@@ -502,8 +537,8 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
                 if (version == '1')
                 {
                     try
-                    {                       
-                        keyURL = addr + '/v1/' + encodeURI(name + path + k);
+                    {                    
+                        keyURL = addr + '/v1/' + gfURLEncode(name + path + k);
                         var leafNode = null;
                         var cache = await getReqCache (keyURL);
                         if (cache[0])
@@ -525,13 +560,13 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
                     {
                         dbgInfo ("MATCH ERROR matchFolderType[1]: " + error.message);
                         leafData = null;
-                    }                        
+                    }
                 }
                 else if (version == '2')
                 {
                     try
-                    {                     
-                        keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
+                    { 
+                        keyURL = addr + '/v1/' + gfURLEncode (name + 'data/' + path + k);
                         var leafNode = null;
                         var cache = await getReqCache (keyURL);
                         if (cache[0])
@@ -553,7 +588,7 @@ async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', 
                     {
                         dbgInfo ("MATCH ERROR matchFolderType[2]: " + error.message);
                         leafData = null;
-                    }                        
+                    }
                 }
 
                 if (! leafData)
@@ -696,6 +731,7 @@ async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='',
             // can't continue these types of operations if it cannot event query root mounts!
             if (jsonData["errors"][0].match('denied'))
                  gfRefreshIFramePage ();
+
             return null;
         }
 
@@ -770,8 +806,7 @@ async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='',
    })();
 }
 
-// ===============================================================================================
-    
+// ======================================= End of vaultbulkloader Insert =========================================
 
     // actual process nodejs http(s) request:
     var url_parts = url.parse(req.url);

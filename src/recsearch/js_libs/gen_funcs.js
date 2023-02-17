@@ -10,6 +10,42 @@ function gfGetParameterByName(name, url = window.location.href)
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
 
+function gfURLEncode (url)
+{
+    var tempArray        = decodeURIComponent(url).split("?");
+    var baseURL          = tempArray[0];
+        
+    var baseParts        = baseURL.split("://")
+    var basePath         = null;
+    
+    if (baseParts.length > 1)
+        basePath = baseParts[1];
+    else
+        basePath = baseParts[0];
+    
+    var pathParts = basePath.split('/');
+    var newPath   = ''
+    for (var idx = 0; idx < basePath.length; idx++ )
+    {
+        if (basePath[idx].indexOf('/') >= 0)
+            newPath += basePath[idx];
+        else
+            newPath += encodeURIComponent(basePath[idx]);
+    }
+        
+    var newURL = '';
+    if (baseParts.length > 1)
+        newURL = baseParts[0] + '://';
+
+    newURL += newPath;
+    
+    if (tempArray.length > 1)
+        newURL += '?' + encodeURI(tempArray[1]);
+    
+    return newURL;
+}
+
+
 function gfRefreshIFramePage ()
 {
     document.getElementById(FrameID).contentDocument.location.reload()
@@ -130,7 +166,7 @@ function gfFormatDate(date)
 }
 
 function gfCopyToClipboardElement (elem) {
-	  // create hidden text element, if it doesn't already exist
+      // create hidden text element, if it doesn't already exist
     var targetId = "_hiddenCopyText_";
     var isInput = elem.tagName === "INPUT" || elem.tagName === "TEXTAREA";
     var origSelectionStart, origSelectionEnd;
@@ -160,7 +196,7 @@ function gfCopyToClipboardElement (elem) {
     // copy the selection
     var succeed;
     try {
-    	  succeed = document.execCommand("copy");
+          succeed = document.execCommand("copy");
     } catch(e) {
         succeed = false;
     }
@@ -437,32 +473,32 @@ function gfDownload (data, filename, type) {
 
 function gfClickElem(elem) 
 {
-	// Thx user1601638 on Stack Overflow (6/6/2018 - https://stackoverflow.com/questions/13405129/javascript-create-and-save-file )
-	var eventMouse = document.createEvent("MouseEvents")
-	eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
-	elem.dispatchEvent(eventMouse)
+    // Thx user1601638 on Stack Overflow (6/6/2018 - https://stackoverflow.com/questions/13405129/javascript-create-and-save-file )
+    var eventMouse = document.createEvent("MouseEvents")
+    eventMouse.initMouseEvent("click", true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+    elem.dispatchEvent(eventMouse)
 }
 
 function gfOpenFile(func) 
 {
-	var readFile = function(e) {
-		var file = e.target.files[0];
-		if (!file) {
-			return;
-		}
-		var reader = new FileReader();
-		reader.onload = function(e) {
-			var contents = e.target.result;
-			fileInput.func(contents)
-			document.body.removeChild(fileInput)
-		}
-		reader.readAsBinaryString(file)
-	}
-	var fileInput = document.createElement("input")
-	fileInput.type='file'
-	fileInput.style.display='none'
-	fileInput.onchange=readFile
-	fileInput.func=func
-	document.body.appendChild(fileInput)
-	gfClickElem(fileInput)
+    var readFile = function(e) {
+        var file = e.target.files[0];
+        if (!file) {
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var contents = e.target.result;
+            fileInput.func(contents)
+            document.body.removeChild(fileInput)
+        }
+        reader.readAsBinaryString(file)
+    }
+    var fileInput = document.createElement("input")
+    fileInput.type='file'
+    fileInput.style.display='none'
+    fileInput.onchange=readFile
+    fileInput.func=func
+    document.body.appendChild(fileInput)
+    gfClickElem(fileInput)
 }

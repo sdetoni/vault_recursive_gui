@@ -137,7 +137,7 @@ function vaultUIGotoURI (uri, closeDialog=true)
     dbgInfo ("vaultUIGotoURI: " + p);
 
     // Vault EMBER magic code to redirect to the correct page
-    var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute (p);
+    var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute ( gfURLEncode(p) );
     r.followRedirects();
     VaultCurrentURL = "";
 
@@ -211,7 +211,7 @@ function vaultAbortAction ()
 function vault_generateCodeExample (apiURL)
 {
     var username = getVaultEmberObj().__container__.lookup("service:auth").authData.displayName;
-    apiURL = unescape(apiURL);
+    apiURL = gfURLEncode(unescape(apiURL));
     dbgInfo ("vault_generateCodeExample: " + apiURL);
     dbgInfo ("vault_generateCodeExample: " + username);
 
@@ -668,6 +668,9 @@ function vault_dumpSearchTreeToJSON (d)
 }
 
 var VaultAPIPending = { };
+
+// ======================================= Start of vaultbulkloader Insert =========================================
+
 function submitVaultAPIRequest (token, url, clrCacheOnError=false, vaultAPIPendingDict=null)
 {
     let uobj = {clrCacheOnError:clrCacheOnError, promise:null};
@@ -814,9 +817,6 @@ async function addReqCache (url, data, vaultAPIPendingDict=null)
     }
 }
 
-var AsyncCacheLoading           = false;
-var AsyncCacheLastLoadedTime    = Date.now();
-var AsyncCacheRefreshLoadedTime = Date.now();
 var LastCacheStatus             = ""
 function clrReqCache ()
 {    
@@ -833,6 +833,453 @@ function clrReqCache ()
         }
     }
 }
+
+// ################################################################################################
+
+// matchFolderType bit values:
+// 0  = match all data
+// 1  = match non-leaf and leaf container folder
+// 2  = match non-leaf container folder
+async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', regMatch='', prnMatches=false, matchFolderType=0, notRegMatchPath='', recurse=true, ignoreVaultAbortSearch=false)
+{
+    return await (async () =>
+    {
+        // dbgTrace ("Reading: '" + name + path + "'")
+
+        var cmpRegMatch        = new RegExp(regMatch, 'ig');
+        var cmpNotRegMatchPath = new RegExp(notRegMatchPath, 'ig');
+        var listURL            = addr;
+        var rtnData            = { };
+
+        // vault kv list <name>
+        // list keys call
+        if (version == '1')
+            listURL = listURL + '/v1/' + gfURLEncode(name + path) + '?list=true'
+        else if (version == '2')
+            listURL = listURL + '/v1/' + gfURLEncode(name + 'metadata/' + path) + '?list=true';
+        else
+            return (null);
+
+        // print (listURL)
+        // dbgTrace ("Calling URL: " + listURL)
+        var fldrDataOrig = null;
+
+        if (vaultIsFolderPath(name+path))
+        {
+            var cache = await getReqCache (listURL);
+            if (cache[0])
+                fldrDataOrig = cache[1];
+            else
+            {
+                submitVaultAPIRequest (token, listURL, true);
+                cache = await getReqCache (listURL);
+                if (cache[0])
+                    fldrDataOrig = cache[1];
+                else
+                {
+                    dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + listURL);
+                    return null;
+                }
+            }
+        }
+
+        // vault kv get <name>/<key>
+        var fldrDataKeys = { };
+
+        if ((! fldrDataOrig) || ("errors" in fldrDataOrig))
+        {
+            dbgWarn ("vault_FetchQueryKVSecrets: list folder data is NULL! :  " + listURL);
+            dbgWarn ("vault_FetchQueryKVSecrets: converting request to query KV item");
+
+            if (path == '')
+                return ([listURL, rtnData]);
+
+            // convert failed list query to KV item query
+            var p = gfRStrip(path, FLDRCHR);
+            var k = p.split(FLDRCHR).pop();
+            path = gfRStrip(p, k);
+            fldrDataKeys = {0:  k};
+        }
+        else
+        {
+            //dbgTrace("== Dumping vault_FetchQueryKVSecrets '" + name + "/" + path + "' ==");
+            //vaultDumpDict (fldrDataOrig);
+            //dbgTrace("========================================");
+
+            if ( ['1', '2'].includes(version))
+                fldrDataKeys = fldrDataOrig['data']['keys'];
+        }
+
+        // Place url requests into pending load url list
+        for (var i in fldrDataKeys)
+        {
+            var k = fldrDataKeys[i];
+
+            // if using notRegMatchPath, then test if path matches, and continue/ignore
+            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
+                 continue;
+
+            if (k.match("\/$"))
+                continue;
+
+            var keyURL = '';
+            if (version == '1')
+            {
+                keyURL = addr + '/v1/' + gfURLEncode(name + path + k);
+                var cache = await getReqCache (keyURL);
+                if (! cache[0])
+                    submitVaultAPIRequest (token, keyURL, false);
+            }
+            else if (version == '2')
+            {
+                keyURL = addr + '/v1/' + gfURLEncode(name + 'data/' + path + k);
+                var cache = await getReqCache (keyURL);
+                if (! cache[0])
+                    submitVaultAPIRequest (token, keyURL, false);
+            }
+        }
+
+        // try and preload any folders recursively so they are in a pending state and  can be loaded concurrently...
+        for (var i in fldrDataKeys)
+        {
+            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
+            {
+                dbgError ("####### vault_FetchQueryKVSecrets : ABORTED 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+                return null;
+            }
+
+            var k = fldrDataKeys[i];
+
+            // if using notRegMatchPath, then test if path matches, and continue/ignore
+            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
+                 continue;
+
+            // if folder type, process this first and load pending requests...
+            if (k.match("\/$") && recurse)
+            {
+                var ks = gfRStrip(k, FLDRCHR);
+                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, version, name, path + k, regMatch, prnMatches, matchFolderType, notRegMatchPath, recurse, ignoreVaultAbortSearch);
+                if (rtnVals == null)
+                {
+                    dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + path + k);
+                    return (null);
+                }
+                rtnData[k] = { apiURL: rtnVals[0],
+                                scrtVersion: version,
+                                scrtName: name,
+                                scrtPath: path + k,
+                                isLeafNode: false,
+                                isEndFolder:false,
+                                data: null,
+                                child: rtnVals[1]
+                              };
+            }
+        }
+
+        // match and scran results from hopefully, now cached results.
+        for (var i in fldrDataKeys)
+        {
+            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
+            {
+                dbgError ("####### vault_FetchQueryKVSecrets : ABORTED 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+                return null;
+            }
+
+            var k = fldrDataKeys[i];
+
+            // if using notRegMatchPath, then test if path matches, and continue/ignore
+            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
+                 continue;
+
+            if (k.match("\/$") && recurse)
+            {
+               // already processed in previous loop
+            }
+            // matchFolderType:
+            // 0  = match all data
+            // 1  = match non-leaf and leaf container folder
+            // 2  = match non-leaf container folder
+            else if (matchFolderType < 2)
+            {
+                var keyURL = '';
+                var leafData = null;
+                if (version == '1')
+                {
+                    try
+                    {                    
+                        keyURL = addr + '/v1/' + gfURLEncode(name + path + k);
+                        var leafNode = null;
+                        var cache = await getReqCache (keyURL);
+                        if (cache[0])
+                            leafNode = cache[1];
+                        else
+                        {
+                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 3! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
+                            return (null);
+                        }
+
+                        if ((! leafNode) || ("errors" in leafNode))
+                        {
+                            dbgError ("vault_FetchQueryKVSecrets: leafNode(1) is NULL!");
+                            continue; // return ([listURL, rtnData]);
+                        }
+                        leafData = leafNode['data']
+                    }
+                    catch (error)
+                    {
+                        dbgInfo ("MATCH ERROR matchFolderType[1]: " + error.message);
+                        leafData = null;
+                    }
+                }
+                else if (version == '2')
+                {
+                    try
+                    { 
+                        keyURL = addr + '/v1/' + gfURLEncode (name + 'data/' + path + k);
+                        var leafNode = null;
+                        var cache = await getReqCache (keyURL);
+                        if (cache[0])
+                            leafNode = cache[1];
+                        else
+                        {
+                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 4! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
+                            return (null);
+                        }
+
+                        if ((! leafNode) || ("errors" in leafNode))
+                        {
+                            dbgError ("vault_FetchQueryKVSecrets: leafNode(2) is NULL! '" + keyURL + "'");
+                            continue; // return ([listURL, rtnData]);
+                        }
+                        leafData = leafNode['data']['data']
+                    }
+                    catch (error)
+                    {
+                        dbgInfo ("MATCH ERROR matchFolderType[2]: " + error.message);
+                        leafData = null;
+                    }
+                }
+
+                if (! leafData)
+                {
+                    dbgWarn ("vault_FetchQueryKVSecrets: leafData is NULL!");
+                    // continue;
+                }
+
+                rtnData[k] = { child:{},
+                               apiURL:keyURL,
+                               scrtVersion: version,
+                               scrtName: name,
+                               scrtPath: path + k,
+                               isLeafNode: false,
+                               isEndFolder:true,
+                               data:await Cryptoe.encrypt(leafData)
+                             };
+                var matched = false;
+
+                try
+                {
+                    // if using regExpr matching, then load ALL of leaf node data
+                    if ((regMatch != '') && (k.match(cmpRegMatch)))
+                         matched = true;
+
+                    // If matching against something ...
+                    if ((regMatch != '') && (matched == false))
+                    {
+                        for (var lk in leafData)
+                        {
+                            if (typeof(leafData[lk]) == "object")
+                                matched = ( lk.match(cmpRegMatch) || JSON.stringify(leafData[lk]).match(cmpRegMatch) ) ? true : false;
+                            else
+                                matched = ( lk.match(cmpRegMatch) || leafData[lk].match(cmpRegMatch) ) ? true : false;
+
+                            if (matched)
+                            {
+                                if (prnMatches)
+                                    dbgInfo ("vault_FetchQueryKVSecrets: Matched: " + name + path + k + ' :: ' + lk + ":" + leafData[lk]);
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        matched = true;
+                    }
+                }
+                catch (error)
+                {
+                    dbgInfo ("MATCH ERROR: " + error.message);
+                    noteError ("Unhandled exception on matching with regular expression:<br>'" + regMatch + "'<br>" + error.message);
+                    return null;
+                }
+
+                // matchFolderType:
+                // 0  = match all data
+                // 1  = match non-leaf and leaf container folder
+                // 2  = match non-leaf container folder
+                if (matchFolderType < 1)
+                {
+                    // If any match found, then add all of leaf data nodes to the list...
+                    if (matched)
+                    {
+                        for (var lk in leafData)
+                        {
+                            // dbgTrace ("Storing: '" + name + path + k + '/' + lk + "'");
+                            rtnData[k]["child"][lk] = { child:null,
+                                                        apiURL:keyURL,
+                                                        scrtVersion: version,
+                                                        scrtName: name,
+                                                        scrtPath: path + k,
+                                                        isLeafNode: true,
+                                                        isEndFolder:false,
+                                                        data:await Cryptoe.encrypt(leafData[lk]),
+                                                        id:gfCRC32(name + path + k, true) };
+                        }
+                    }
+                }
+            }
+
+            let kobj = rtnData[k];
+            // if using regExpr matching, and nothing is matched on this sub-key, then ignore its results
+            if (kobj && (regMatch != '') && ((Object.keys(kobj["child"]).length <= 0) && (! k.match(cmpRegMatch))))
+                delete rtnData[k];
+        }
+
+        return ([listURL, rtnData]);
+   })();
+}
+
+// matchFolderType:
+// 0  = match all data
+// 1  = match non-leaf and leaf container folder
+// 2  = match non-leaf container folder
+async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='', matchFolderType=0, notRegMatchPath='',ignoreVaultAbortSearch=false)
+{
+    return await (async () =>
+    {
+        // Activate the search cache
+        if (token != null)
+            await addReqCache ("token", token);
+        else
+        {
+            dbgError ("vault_FetchQueryRootMounts: token is NULL!");
+            return null;
+        }
+
+        var cmpRegMatch = new RegExp(regMatch, 'ig');
+        var listURL     = addr + '/v1/sys/internal/ui/mounts';
+        var jsonData    = null;
+        var cache       = await getReqCache (listURL);
+        if (cache[0])
+            jsonData = cache[1];
+        else
+        {
+            submitVaultAPIRequest (token, listURL, true);
+            cache = await getReqCache (listURL);
+            if (cache[0])
+                jsonData = cache[1];
+            else
+                return null;
+        }
+
+        if (! jsonData)
+        {
+            dbgError ("vault_FetchQueryRootMounts: jsonData is NULL!");
+            return null;
+        }
+
+        // vaultDumpDict (jsonData);
+
+        if ("errors" in jsonData)
+        {
+            clrReqCache();
+            dbgError  ("vault_FetchQueryRootMounts: Failed query on " + listURL );
+            dbgError  ("vault_FetchQueryRootMounts: " + jsonData["errors"]);
+            noteError ("Failed Vault Request.<br>Please try re-authentication or check Vault service.<br>"+jsonData["errors"]);
+
+            // can't continue these types of operations if it cannot event query root mounts!
+            if (jsonData["errors"][0].match('denied'))
+                 gfRefreshIFramePage ();
+
+            return null;
+        }
+
+        // Make sure name has a trailing '/' for comparisons from json data
+        if (name != '')
+            name = gfRStrip(name, FLDRCHR) + FLDRCHR;
+
+        var rtnData = { };
+        var secrets=jsonData['data']['secret'];
+        for (var key in secrets)
+        {
+            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
+            {
+                dbgError ("####### vault_FetchQueryRootMounts : ABORTED! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+                return null;
+            }
+
+            // dbgTrace (key + '::' + JSON.stringify(secrets[key]));
+            // var rsKey = gfRStrip(key, FLDRCHR);
+
+            // if name is not null, and does not  matches mount point key, continue
+            if ((name != '') && (name != key))
+                continue;
+
+            if (secrets[key]['type'] == 'kv')
+            {
+
+                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, secrets[key]['options']['version'], key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
+                if (rtnVals == null)
+                {
+                    dbgError ("####### vault_FetchQueryRootMounts : NULL Return 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+                    return null;
+                }
+                rtnData[key] = { apiURL: rtnVals[0],
+                                   scrtVersion: secrets[key]['options']['version'],
+                                   scrtName: key,
+                                   scrtPath: path,
+                                   isLeafNode: false,
+                                   isEndFolder:false,
+                                   data: null,
+                                   child: rtnVals[1]
+                                 };
+            }
+            else if (secrets[key]['type'] == 'cubbyhole')
+            {
+                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, '1', key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
+                if (rtnVals == null)
+                {
+                    dbgInfo ("####### vault_FetchQueryRootMounts : NULL Return 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+                    return null;
+                }
+                rtnData[key] = { apiURL: rtnVals[0],
+                                   scrtVersion: '1',
+                                   scrtName: key,
+                                   scrtPath: path,
+                                   isLeafNode: false,
+                                   isEndFolder:false,
+                                   data:null,
+                                   child: rtnVals[1]
+                                 };
+            }
+            else
+                continue;
+
+            // remove blank matches
+            if ((regMatch != '') && ((Object.keys(rtnData[key]["child"]).length <= 0) && (! key.match(cmpRegMatch))))
+                delete rtnData[key];
+        }
+
+        dbgTrace ("####### vault_FetchQueryRootMounts : Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
+        return rtnData;
+   })();
+}
+
+// ======================================= End of vaultbulkloader Insert =========================================
+
+var AsyncCacheLoading           = false;
+var AsyncCacheLastLoadedTime    = Date.now();
+var AsyncCacheRefreshLoadedTime = Date.now();
 
 function updateReqCacheIconStatusNow ()
 {
@@ -1166,447 +1613,6 @@ function SearchRecycleBinSetButton ()
     }
 
     SearchRecyleBinButtonEvent (false);
-}
-
-// ################################################################################################
-
-// matchFolderType bit values:
-// 0  = match all data
-// 1  = match non-leaf and leaf container folder
-// 2  = match non-leaf container folder
-async function vault_FetchQueryKVSecrets  (addr, token, version, name, path='', regMatch='', prnMatches=false, matchFolderType=0, notRegMatchPath='', recurse=true, ignoreVaultAbortSearch=false)
-{
-    return await (async () =>
-    {
-        // dbgTrace ("Reading: '" + name + path + "'")
-
-        var cmpRegMatch        = new RegExp(regMatch, 'ig');
-        var cmpNotRegMatchPath = new RegExp(notRegMatchPath, 'ig');
-        var listURL            = addr;
-        var rtnData            = { };
-
-        // vault kv list <name>
-        // list keys call
-        if (version == '1')
-            listURL = listURL + '/v1/' + encodeURI(name + path) + '?list=true'
-        else if (version == '2')
-            listURL = listURL + '/v1/' + encodeURI(name + 'metadata/' + path) + '?list=true';
-        else
-            return (null);
-
-        // print (listURL)
-        // dbgTrace ("Calling URL: " + listURL)
-        var fldrDataOrig = null;
-
-        if (vaultIsFolderPath(name+path))
-        {
-            var cache = await getReqCache (listURL);
-            if (cache[0])
-                fldrDataOrig = cache[1];
-            else
-            {
-                submitVaultAPIRequest (token, listURL, true);
-                cache = await getReqCache (listURL);
-                if (cache[0])
-                    fldrDataOrig = cache[1];
-                else
-                {
-                    dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + listURL);
-                    return null;
-                }
-            }
-        }
-
-        // vault kv get <name>/<key>
-        var fldrDataKeys = { };
-
-        if ((! fldrDataOrig) || ("errors" in fldrDataOrig))
-        {
-            dbgWarn ("vault_FetchQueryKVSecrets: list folder data is NULL! :  " + listURL);
-            dbgWarn ("vault_FetchQueryKVSecrets: converting request to query KV item");
-
-            if (path == '')
-                return ([listURL, rtnData]);
-
-            // convert failed list query to KV item query
-            var p = gfRStrip(path, FLDRCHR);
-            var k = p.split(FLDRCHR).pop();
-            path = gfRStrip(p, k);
-            fldrDataKeys = {0:  k};
-        }
-        else
-        {
-            //dbgTrace("== Dumping vault_FetchQueryKVSecrets '" + name + "/" + path + "' ==");
-            //vaultDumpDict (fldrDataOrig);
-            //dbgTrace("========================================");
-
-            if ( ['1', '2'].includes(version))
-                fldrDataKeys = fldrDataOrig['data']['keys'];
-        }
-
-        // Place url requests into pending load url list
-        for (var i in fldrDataKeys)
-        {
-            var k = fldrDataKeys[i];
-
-            // if using notRegMatchPath, then test if path matches, and continue/ignore
-            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
-                 continue;
-
-            if (k.match("\/$"))
-                continue;
-
-            var keyURL = '';
-            if (version == '1')
-            {
-                keyURL = addr + '/v1/' + encodeURI(name + path + k);
-                var cache = await getReqCache (keyURL);
-                if (! cache[0])
-                    submitVaultAPIRequest (token, keyURL, false);
-            }
-            else if (version == '2')
-            {
-                keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
-                var cache = await getReqCache (keyURL);
-                if (! cache[0])
-                    submitVaultAPIRequest (token, keyURL, false);
-            }
-        }
-
-        // try and preload any folders recursively so they are in a pending state and  can be loaded concurrently...
-        for (var i in fldrDataKeys)
-        {
-            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
-            {
-                dbgError ("####### vault_FetchQueryKVSecrets : ABORTED 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-                return null;
-            }
-
-            var k = fldrDataKeys[i];
-
-            // if using notRegMatchPath, then test if path matches, and continue/ignore
-            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
-                 continue;
-
-            // if folder type, process this first and load pending requests...
-            if (k.match("\/$") && recurse)
-            {
-                var ks = gfRStrip(k, FLDRCHR);
-                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, version, name, path + k, regMatch, prnMatches, matchFolderType, notRegMatchPath, recurse, ignoreVaultAbortSearch);
-                if (rtnVals == null)
-                {
-                    dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + path + k);
-                    return (null);
-                }
-                rtnData[k] = { apiURL: rtnVals[0],
-                                scrtVersion: version,
-                                scrtName: name,
-                                scrtPath: path + k,
-                                isLeafNode: false,
-                                isEndFolder:false,
-                                data: null,
-                                child: rtnVals[1]
-                              };
-            }
-        }
-
-        // match and scran results from hopefully, now cached results.
-        for (var i in fldrDataKeys)
-        {
-            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
-            {
-                dbgError ("####### vault_FetchQueryKVSecrets : ABORTED 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-                return null;
-            }
-
-            var k = fldrDataKeys[i];
-
-            // if using notRegMatchPath, then test if path matches, and continue/ignore
-            if ((notRegMatchPath != '') && (k.match(cmpNotRegMatchPath)))
-                 continue;
-
-            if (k.match("\/$") && recurse)
-            {
-               // already processed in previous loop
-            }
-            // matchFolderType:
-            // 0  = match all data
-            // 1  = match non-leaf and leaf container folder
-            // 2  = match non-leaf container folder
-            else if (matchFolderType < 2)
-            {
-                var keyURL = '';
-                var leafData = null;
-                if (version == '1')
-                {
-                    try
-                    {                    
-                        keyURL = addr + '/v1/' + encodeURI(name + path + k);
-                        var leafNode = null;
-                        var cache = await getReqCache (keyURL);
-                        if (cache[0])
-                            leafNode = cache[1];
-                        else
-                        {
-                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 3! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
-                            return (null);
-                        }
-
-                        if ((! leafNode) || ("errors" in leafNode))
-                        {
-                            dbgError ("vault_FetchQueryKVSecrets: leafNode(1) is NULL!");
-                            continue; // return ([listURL, rtnData]);
-                        }
-                        leafData = leafNode['data']
-                    }
-                    catch (error)
-                    {
-                        dbgInfo ("MATCH ERROR matchFolderType[1]: " + error.message);
-                        leafData = null;
-                    }
-                }
-                else if (version == '2')
-                {
-                    try
-                    { 
-                        keyURL = addr + '/v1/' + encodeURI(name + 'data/' + path + k);
-                        var leafNode = null;
-                        var cache = await getReqCache (keyURL);
-                        if (cache[0])
-                            leafNode = cache[1];
-                        else
-                        {
-                            dbgError ("####### vault_FetchQueryKVSecrets : NULL Return 4! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls! " + keyURL);
-                            return (null);
-                        }
-
-                        if ((! leafNode) || ("errors" in leafNode))
-                        {
-                            dbgError ("vault_FetchQueryKVSecrets: leafNode(2) is NULL! '" + keyURL + "'");
-                            continue; // return ([listURL, rtnData]);
-                        }
-                        leafData = leafNode['data']['data']
-                    }
-                    catch (error)
-                    {
-                        dbgInfo ("MATCH ERROR matchFolderType[2]: " + error.message);
-                        leafData = null;
-                    }
-                }
-
-                if (! leafData)
-                {
-                    dbgWarn ("vault_FetchQueryKVSecrets: leafData is NULL!");
-                    // continue;
-                }
-
-                rtnData[k] = { child:{},
-                               apiURL:keyURL,
-                               scrtVersion: version,
-                               scrtName: name,
-                               scrtPath: path + k,
-                               isLeafNode: false,
-                               isEndFolder:true,
-                               data:await Cryptoe.encrypt(leafData)
-                             };
-                var matched = false;
-
-                try
-                {
-                    // if using regExpr matching, then load ALL of leaf node data
-                    if ((regMatch != '') && (k.match(cmpRegMatch)))
-                         matched = true;
-
-                    // If matching against something ...
-                    if ((regMatch != '') && (matched == false))
-                    {
-                        for (var lk in leafData)
-                        {
-                            if (typeof(leafData[lk]) == "object")
-                                matched = ( lk.match(cmpRegMatch) || JSON.stringify(leafData[lk]).match(cmpRegMatch) ) ? true : false;
-                            else
-                                matched = ( lk.match(cmpRegMatch) || leafData[lk].match(cmpRegMatch) ) ? true : false;
-
-                            if (matched)
-                            {
-                                if (prnMatches)
-                                    dbgInfo ("vault_FetchQueryKVSecrets: Matched: " + name + path + k + ' :: ' + lk + ":" + leafData[lk]);
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        matched = true;
-                    }
-                }
-                catch (error)
-                {
-                    dbgInfo ("MATCH ERROR: " + error.message);
-                    noteError ("Unhandled exception on matching with regular expression:<br>'" + regMatch + "'<br>" + error.message);
-                    return null;
-                }
-
-                // matchFolderType:
-                // 0  = match all data
-                // 1  = match non-leaf and leaf container folder
-                // 2  = match non-leaf container folder
-                if (matchFolderType < 1)
-                {
-                    // If any match found, then add all of leaf data nodes to the list...
-                    if (matched)
-                    {
-                        for (var lk in leafData)
-                        {
-                            // dbgTrace ("Storing: '" + name + path + k + '/' + lk + "'");
-                            rtnData[k]["child"][lk] = { child:null,
-                                                        apiURL:keyURL,
-                                                        scrtVersion: version,
-                                                        scrtName: name,
-                                                        scrtPath: path + k,
-                                                        isLeafNode: true,
-                                                        isEndFolder:false,
-                                                        data:await Cryptoe.encrypt(leafData[lk]),
-                                                        id:gfCRC32(name + path + k, true) };
-                        }
-                    }
-                }
-            }
-
-            let kobj = rtnData[k];
-            // if using regExpr matching, and nothing is matched on this sub-key, then ignore its results
-            if (kobj && (regMatch != '') && ((Object.keys(kobj["child"]).length <= 0) && (! k.match(cmpRegMatch))))
-                delete rtnData[k];
-        }
-
-        return ([listURL, rtnData]);
-   })();
-}
-
-// matchFolderType:
-// 0  = match all data
-// 1  = match non-leaf and leaf container folder
-// 2  = match non-leaf container folder
-async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='', matchFolderType=0, notRegMatchPath='',ignoreVaultAbortSearch=false)
-{
-    return await (async () =>
-    {
-        // Activate the search cache
-        if (token != null)
-            await addReqCache ("token", token);
-        else
-        {
-            dbgError ("vault_FetchQueryRootMounts: token is NULL!");
-            return null;
-        }
-
-        var cmpRegMatch = new RegExp(regMatch, 'ig');
-        var listURL     = addr + '/v1/sys/internal/ui/mounts';
-        var jsonData    = null;
-        var cache       = await getReqCache (listURL);
-        if (cache[0])
-            jsonData = cache[1];
-        else
-        {
-            submitVaultAPIRequest (token, listURL, true);
-            cache = await getReqCache (listURL);
-            if (cache[0])
-                jsonData = cache[1];
-            else
-                return null;
-        }
-
-        if (! jsonData)
-        {
-            dbgError ("vault_FetchQueryRootMounts: jsonData is NULL!");
-            return null;
-        }
-
-        // vaultDumpDict (jsonData);
-
-        if ("errors" in jsonData)
-        {
-            clrReqCache();
-            dbgError  ("vault_FetchQueryRootMounts: Failed query on " + listURL );
-            dbgError  ("vault_FetchQueryRootMounts: " + jsonData["errors"]);
-            noteError ("Failed Vault Request.<br>Please try re-authentication or check Vault service.<br>"+jsonData["errors"]);
-
-            // can't continue these types of operations if it cannot event query root mounts!
-            if (jsonData["errors"][0].match('denied'))
-                 gfRefreshIFramePage ();
-
-            return null;
-        }
-
-        // Make sure name has a trailing '/' for comparisons from json data
-        if (name != '')
-            name = gfRStrip(name, FLDRCHR) + FLDRCHR;
-
-        var rtnData = { };
-        var secrets=jsonData['data']['secret'];
-        for (var key in secrets)
-        {
-            if ((VaultAbortSearch) && (! ignoreVaultAbortSearch))
-            {
-                dbgError ("####### vault_FetchQueryRootMounts : ABORTED! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-                return null;
-            }
-
-            // dbgTrace (key + '::' + JSON.stringify(secrets[key]));
-            // var rsKey = gfRStrip(key, FLDRCHR);
-
-            // if name is not null, and does not  matches mount point key, continue
-            if ((name != '') && (name != key))
-                continue;
-
-            if (secrets[key]['type'] == 'kv')
-            {
-
-                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, secrets[key]['options']['version'], key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
-                if (rtnVals == null)
-                {
-                    dbgError ("####### vault_FetchQueryRootMounts : NULL Return 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-                    return null;
-                }
-                rtnData[key] = { apiURL: rtnVals[0],
-                                   scrtVersion: secrets[key]['options']['version'],
-                                   scrtName: key,
-                                   scrtPath: path,
-                                   isLeafNode: false,
-                                   isEndFolder:false,
-                                   data: null,
-                                   child: rtnVals[1]
-                                 };
-            }
-            else if (secrets[key]['type'] == 'cubbyhole')
-            {
-                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, '1', key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
-                if (rtnVals == null)
-                {
-                    dbgInfo ("####### vault_FetchQueryRootMounts : NULL Return 2! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-                    return null;
-                }
-                rtnData[key] = { apiURL: rtnVals[0],
-                                   scrtVersion: '1',
-                                   scrtName: key,
-                                   scrtPath: path,
-                                   isLeafNode: false,
-                                   isEndFolder:false,
-                                   data:null,
-                                   child: rtnVals[1]
-                                 };
-            }
-            else
-                continue;
-
-            // remove blank matches
-            if ((regMatch != '') && ((Object.keys(rtnData[key]["child"]).length <= 0) && (! key.match(cmpRegMatch))))
-                delete rtnData[key];
-        }
-
-        dbgTrace ("####### vault_FetchQueryRootMounts : Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
-        return rtnData;
-   })();
 }
 
 var ThisSrchResultsDialogBox = null;
@@ -2133,9 +2139,9 @@ async function vault_DeleteNode (addr, token, version, name, path)
         var delURL = addr;
 
         if (version == '1')
-            delURL = delURL + '/v1/' + encodeURI( name + path);
+            delURL = delURL + '/v1/' + gfURLEncode(name + path);
         else if (version == '2')
-            delURL = delURL + '/v1/' + encodeURI(name + 'metadata/' + path);
+            delURL = delURL + '/v1/' + gfURLEncode(name + 'metadata/' + path);
 
         var d = await fetch(delURL, {
                 method: 'DELETE',
@@ -3101,9 +3107,9 @@ async function vault_CloneWriteData (addr, token, version, name, path, dataTree)
                     writePath = writePath + k;
 
                 if (version == '1')
-                    writeURL = writeURL + '/v1/' + encodeURI( name + writePath);
+                    writeURL = writeURL + '/v1/' + gfURLEncode(name + writePath);
                 else if (version == '2')
-                    writeURL = writeURL + '/v1/' + encodeURI(name + 'data/' + writePath);
+                    writeURL = writeURL + '/v1/' + gfURLEncode(name + 'data/' + writePath);
 
                 var secretJSON = '{"data":' + JSON.stringify(await Cryptoe.decrypt(dataTree[k]["data"])) + '}';
                 var writeSuccess = await fetch(writeURL, {
@@ -4365,7 +4371,7 @@ setInterval(function()
             {
                 // This is ending directory/path, so show/enable programming api info helper icon
                 $('#progInfo-action').removeClass('disabled-icon')
-                $('#progInfo-action').attr("onclick",'vault_generateCodeExample("' + encodeURI(VaultAddr + '/v1/' + encodeURI(name) + 'data/' + encodeURI(path)) + '");');
+                $('#progInfo-action').attr("onclick",'vault_generateCodeExample("' + gfURLEncode(VaultAddr + '/v1/' + name + 'data/' + path) + '");');
                 dbgInfo ("prog info onclick : " + $('#progInfo-action').attr("onclick"));
             }
                         
