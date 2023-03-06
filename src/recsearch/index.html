@@ -73,21 +73,50 @@ function vaultDumpDict (d, depth=0)
 
 function getVaultEmberObj ()
 {
-    var emberVaultArry = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES;
-    var emberVaultObj  = null;
-    for (var i=0; i < emberVaultArry.length; i++)
-    {
-        try
+    var emberVaultArry = null;
+    // Loop jumping loading Ember Obj/Env
+    try {         
+        emberVaultArry = document.getElementById(FrameID).contentWindow.requireModule('ember')['default'].Namespace.NAMESPACES;       
+        //dbgInfo ("emberVaultArry [step 1], Load Success = " + (emberVaultArry != null))
+        if (!emberVaultArry)
         {
-            if (emberVaultArry[i].modulePrefix.toLowerCase() == "vault")
-            {
-                // dbgInfo ("Matched ember vault namespace!");
-                emberVaultObj = emberVaultArry[i];
-                break;
-            }
+            emberVaultArry = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES;
+            //dbgInfo ("emberVaultArry [step 1.1], Load Success =" + (emberVaultArry != null))
         }
-        catch {  }
+    } catch {    
+        try 
+        {
+            emberVaultArry = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES;
+            //dbgInfo ("emberVaultArry [step 2], Load Success =" + (emberVaultArry != null))
+        } catch (err) {       
+            emberVaultArry = null;
+        }
+    }   
+    
+    // var emberVaultArry = document.getElementById(FrameID).contentWindow.Ember.Namespace.NAMESPACES;       
+    var emberVaultObj  = null;
+    if (emberVaultArry != null)
+    {
+        for (var i=0; i < emberVaultArry.length; i++)
+        {
+            try
+            {
+                if (emberVaultArry[i].modulePrefix.toLowerCase() == "vault")
+                {
+                    // dbgInfo ("Matched ember vault namespace!");
+                    emberVaultObj = emberVaultArry[i];
+                    break;
+                }
+            }
+            catch {  }
+        }
     }
+    else
+        dbgError ("emberVaultArry failed loading of Ember Env!")   
+   
+    if (!emberVaultObj)
+        dbgError ("emberVaultObj failed loading of Ember Obj!")   
+
     return emberVaultObj;
 }
 
