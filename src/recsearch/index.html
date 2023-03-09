@@ -3539,7 +3539,15 @@ async function pasteAction ()
 
                 // Reload iframe on the last cut/copy operation
                 if  (idx+1 >= cutCopyList.length)
-                    document.getElementById(FrameID).contentWindow.location.reload();
+                {
+                    await (async () =>
+                    {                
+                        let cp = $("#vault_search_base_path").val();
+                        vaultUIGotoPath ("");    
+                        await new Promise(s => setTimeout(s, 100));                        
+                        vaultUIGotoPath (cp);
+                    })();
+                }
             }
             else
                 break;
@@ -3756,10 +3764,29 @@ async function BecomeAsToken (token)
 
     vaultUIGotoURI ("/vault/auth?with=token");
     await new Promise(s => setTimeout(s, 2000));
-
-    // implement hack to fool Ember system to re-render current web page with a new token
-    getVaultEmberObj().__container__.lookup("service:auth").currentToken = token;
-    vaultUIGotoPath('');
+    var maxTries = 10*2; // 10 seconds
+    var pgTst    = setInterval(function()
+    {
+        var ifr = document.getElementById(FrameID);        
+        var arr = getVaultEmberObj().__container__.lookup('-view-registry:main');
+        maxTries--;        
+        for (const [key, item] of Object.entries(arr))
+        {
+            if (item.hasOwnProperty('selectedAuth') && item['selectedAuth'] == "token")
+            {  
+                clearInterval(pgTst);
+                item.token = token;     
+                ifr.contentWindow.document.getElementById('auth-submit').click();
+                return;
+            }
+        }
+        
+        if (maxTries < 0)
+        {
+            clearInterval(pgTst); // give up trying to match login token input field/control
+            noteError ("Failed to login as requested token.");
+        }
+    }, 500);
 }
 
 function rootGenerateToken ()
