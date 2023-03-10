@@ -685,6 +685,9 @@ function domainUsersGroupsAdd (domainName)
         var m =  gdDomainAddedUsrGrpMsg (domainName, mountName);
         dugOutput (m);       
         noteNorm (m.replaceAll("\n", "<br>"));
+        
+        // goto newly create mount point
+        vaultUIGotoPath (mountName);
     })();
 }
 
@@ -1099,6 +1102,6 @@ function domainUsersGroupsRemove (domainName)
 
         var m =  gdDomainRemovedUsrGrpMsg (domainName, mountName);
         dugOutput (m);       
-        noteNorm (m.replaceAll("\n", "<br>"));        
+        noteNorm (m.replaceAll("\n", "<br>"));              
     })();
 }
