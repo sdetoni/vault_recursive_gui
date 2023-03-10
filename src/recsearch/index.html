@@ -3491,6 +3491,7 @@ async function pasteAction ()
         // loop through cut/copy list ...
         var cutCopyList = $("#clipVaultSrcPath").text().split("\n");
         var forceOper   = false;
+        var oper        = $("#clipOperation").text().toLowerCase();
         for (var idx = 0; idx < cutCopyList.length; idx++)
         {
             var list        = cutCopyList[idx].split(FLDRCHR);
@@ -3511,8 +3512,7 @@ async function pasteAction ()
                 vaultActionStartEnd (true);
                 return;
             }
-
-            var oper = $("#clipOperation").text().toLowerCase();
+            
             dbgInfo ("Operation: " + oper);
             dbgInfo ("pasteAction: srcBaseName = '" + srcBaseName + "'");
             dbgInfo ("pasteAction: srcBasePath = '" + srcBasePath + "'");
@@ -3520,6 +3520,14 @@ async function pasteAction ()
             dbgInfo ("pasteAction: pasteBaseName = '" + pasteBaseName + "'");
             dbgInfo ("pasteAction: pasteBasePath = '" + pasteBasePath + "'");
 
+            // ignore operations on the same src and dest path/name 
+            if ( ((srcBaseName == pasteBaseName) && (srcBasePath == pasteBasePath) ) || 
+                 ((srcBaseName == pasteBaseName) && (srcBasePath != '' && srcBasePath.match('^' + gfEscapeRegExp(pasteBasePath)))) )
+            {
+                dbgInfo ("pasteAction: operation ignored, as its the same src and dest path/name");
+                continue;
+            }
+                
             var success = false;
             if (oper == "cut")
                 success = await cloneRenameMoveSecret (true, srcBaseName, srcBasePath, pasteBaseName, pasteBasePath, forceOper);
@@ -3553,6 +3561,9 @@ async function pasteAction ()
                 break;
         }
 
+        if (oper == "cut")
+            clrClipAction();
+            
         vaultActionStartEnd (true);
     })();
 }
