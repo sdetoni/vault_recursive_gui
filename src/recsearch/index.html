@@ -4406,12 +4406,14 @@ setInterval(function()
         // Detect if page has change and capture current Vault path.
         if (VaultCurrentURL != curl)
         {
-            // Hide cubbyhole reference, its just Gui noise...
+            /****** TODO : Need to fix this in a better way!
+            // Hide cubbyhole reference, its just Gui noise...                        
             if (curl == VaultBaseGUIURI)
             {
                 dbgTrace ("hiding cubby hole page ");
                 $('#' + FrameID).contents().find('a[href="' + DefaultPage + VaultBaseGUIURI + '/cubbyhole/list').parent().parent().parent().parent().hide();
             }
+            *******/
 
             VaultCurrentURL = curl;
             dbgInfo ("Current URL: " + VaultCurrentURL);
