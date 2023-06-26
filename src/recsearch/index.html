@@ -48,6 +48,7 @@ var VaultAsyncChkLoadTime   = 1000 * 5;  // 5 seconds
 var VaultAbortSearch        = false;     // Cancel current search operation
 var AsyncCacheEnabled       = true;      // determines if async cache loading is enabled
 var SearchRecycleBinEnabled = false;     // determines if search will search ~RecycleBin~ folders in vault as well?
+var VaultGUIHideCubby       = false;     // hide the cubby section as its most noise...
 var VaultAddr               = window.location.protocol + "//" + location.host;
 var VaultRecycleBinPath     = "~RecycleBin~";
 var ALLOFVAULT              = "All of Vault";
@@ -4405,15 +4406,22 @@ setInterval(function()
         
         // Detect if page has change and capture current Vault path.
         if (VaultCurrentURL != curl)
-        {
-            /****** TODO : Need to fix this in a better way!
+        {            
             // Hide cubbyhole reference, its just Gui noise...                        
-            if (curl == VaultBaseGUIURI)
-            {
-                dbgTrace ("hiding cubby hole page ");
-                $('#' + FrameID).contents().find('a[href="' + DefaultPage + VaultBaseGUIURI + '/cubbyhole/list').parent().parent().parent().parent().hide();
+            if (VaultGUIHideCubby && (curl == VaultBaseGUIURI))
+            {   
+                dbgTrace ("hiding cubby hole reference");
+                var element = $('#' + FrameID).contents().find('a[href="' + DefaultPage + VaultBaseGUIURI + '/cubbyhole/list');
+                while ((element.length > 0) && (element.parent().find('.container').length <= 0))
+                {
+                    if (element.parent().find('.list-item-row').length > 0)
+                    {
+                        element.hide();
+                        break;
+                    }
+                    element = element.parent();
+                }
             }
-            *******/
 
             VaultCurrentURL = curl;
             dbgInfo ("Current URL: " + VaultCurrentURL);

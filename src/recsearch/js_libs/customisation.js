@@ -4,7 +4,8 @@
 // 
 //Set default Domain name for Domain group add/remove
 //var gdDomainName = "MyDomain"
-// 
+//VaultGUIHideCubby = true; 
+//
 //Add custom completion message for Domain group add 
 //function gdDomainAddedUsrGrpMsg (domainName, mountName)
 //{
