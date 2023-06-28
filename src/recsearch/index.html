@@ -2104,21 +2104,22 @@ function runSearch (secretNamePath = null)
             else if ((rtnData != null) && (Object.keys(rtnData).length <= 0))
             {
                 var p = baseName + basePath;
-                var h = "";
+                var baseErr = '<p style="text-align:left;white-space:nowrap;margin:0px">Failed to match: <b style="font-size:large">' + srchTxt + '</b></p>';
                 if (p != "")
-                {                              
-                    h = "<p style='float:left; position: absolute;top: -10px;left: 5px;'>" + 
-                            "<a id='searchrun-but' href='#' onclick='$(\"#userNoteErr\").fadeOut(500);runSearch(\"/\");' title='Search in -All Secrets-'>" + 
-                            "<span class='fa-stack hover-white'>" +
-                                "<i class='fa fa-search fa-stack-1x' style='font-size:large;color:#5cb3de'></i>" +
-                                "<i class='fa fa-search'             style='position: relative; left:-3px; top:4px;font-size:large'></i>" +                                 
-                            "</span>" +     
-                            "</a>"+
-                        "</p>" +
-                        '<p style="text-align:left;white-space:nowrap;">From path: <b style="font-size:large">' + p + '</b>' + '</p>';
+                {                         
+                    baseErr =  baseErr +
+                              '<p style="text-align:left;white-space:nowrap;margin:0px">From path: <b style="font-size:large">' + p + "</b></p>" +
+                              "<p style='background-color: inherit; float:left; position: absolute; top:-13px; left:-32px;'>" + 
+                                  "<a id='searchrun-but' href='#' onclick='$(\"#userNoteErr\").fadeOut(500);runSearch(\"/\");' title='Search in -All Secrets-'>" + 
+                                  "<span class='fa-stack hover-white'>" +
+                                      "<i class='fa fa-search fa-stack-1x' style='font-size:large;color:#5cb3de'></i>" +
+                                      "<i class='fa fa-search'             style='position: relative; left:-3px; top:4px;font-size:large'></i>" +                                 
+                                  "</span>" +     
+                                  "</a>"+
+                              "</p>";
                 }
-                    
-                noteError (h + '<p style="text-align:left;white-space:nowrap;">Failed to match: <b style="font-size:large">' + srchTxt + '</b></p>');
+                
+                noteError (baseErr);
             }
             else if (VaultAbortSearch)
             {
