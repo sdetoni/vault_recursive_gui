@@ -174,6 +174,11 @@ function vaultUIGotoURI (uri, closeDialog=true)
     try { ThisSrchResultsDialogBox.dialog("close"); } catch(err) { }
 }
 
+function refreshGotoURI (uri)
+{
+    location = vaultMakeDeepLinkURL (uri);
+}
+
 function vaultUIGotoPath (secretNamePath)
 {
     if (secretNamePath != "")
@@ -372,23 +377,39 @@ function vault_pathURLtoNamePath (vaultPathURL)
     var name = "";
     var path = "";
 
-    var regex = /\/vault\/secrets\/(.*\/)(list|show)\/(.*)/;
+    dbgTrace ("vault_pathURLtoNamePath(0): " + vaultPathURL);    
+    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list|show|directory|details)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
-    {
+    {      
+        name = matchNamePath[1];
+        path = matchNamePath[4];
+        if (path == "/")
+            path = "";
+        dbgTrace ("vault_pathURLtoNamePath(1): name : >" + name + "< path: >" + path + "<");
+        return [name, path];
+    }
+           
+    var regex = "/vault/secrets/(.*/)(list|show)/(.*)";
+    var matchNamePath = vaultPathURL.match(regex);
+    if (matchNamePath)
+    {    
         name = matchNamePath[1];
         path = matchNamePath[3];
+        dbgTrace ("vault_pathURLtoNamePath(3): name : >" + name + "< path: >" + path + "<");
         return [name, path];
     }
 
-    regex             = /\/vault\/secrets\/(.*\/)list/;
+    regex             = "/vault/secrets/(.*/)list";
     var matchBaseName = vaultPathURL.match(regex);
     if (matchBaseName)
     {
         name = matchBaseName[1];
+        dbgTrace ("vault_pathURLtoNamePath(4): name : >" + name + "< path: >" + path + "<");
         return [name, path];
     }
 
+    dbgTrace ("vault_pathURLtoNamePath(5): name : >" + name + "< path: >" + path + "<");
     return [name, path];
 }
 
@@ -1386,10 +1407,12 @@ function AsyncCacheLoad ()
         // parse url search parameters, and jump to page upon first load/login into Vault
         if (URLGotoActionTest)        
         {
-            URLGotoActionTest = false;
+            URLGotoActionTest = false;            
             let vp = gfGetParameterByName("goto");
             if (vp)
-                vaultUIGotoPath (vp);
+            {
+                vaultUIGotoPath (unescape(vp));
+            }
         }
 
         // Wait for #search-tools-width to be fully rendered to get its actual width as this can vary significantly while a page is loading!
@@ -2312,7 +2335,6 @@ function nodeDeleteItem (element, paths, operType="")
                                                                 child:       childItems
                                                      };
             }
-
             var treeData = vault_jsTreeAllDict (deleteItems);
 
             $('#deleteSearchOutput').jstree('destroy');
@@ -2347,14 +2369,12 @@ function nodeDeleteItem (element, paths, operType="")
 
             // construct the recycle bin path if not in the recycle bin path
             if (! secretPath.startsWith(VaultRecycleBinPath + FLDRCHR))
-            {
-                var list = gfRStrip(secretPath, FLDRCHR).split(FLDRCHR);
-                $('#deleteToRecyclePath').val(VaultRecycleBinPath + FLDRCHR + list.slice(-1) + '_' + gfNowTimeStamp());
+            {                
                 $('#deleteToRecycleBin').css("display", "contents");
             }
             else // make sure you can't recursively recycle stuff in the recycle bin, this would be bad!
             {
-                $('#deleteToRecycleBin').css("display", "none");
+                $('#deleteToRecycleBin').css("display", "none");                
                 $('#deleteToRecycleChk').prop('checked', false);
             }
 
@@ -2365,6 +2385,11 @@ function nodeDeleteItem (element, paths, operType="")
                 $(this).jstree(true).deselect_all(true);
                 $(this).jstree(true).select_node(data["node"]["a_attr"].id);
             });
+            
+            if (Object.keys(deleteItems).length > 1)
+            {
+                
+            }
 
             if (VaultAbortSearch)
                 return false;
@@ -2431,7 +2456,10 @@ function nodeDeleteItem (element, paths, operType="")
                                                                     if ($('#deleteToRecycleChk').is(":checked"))
                                                                     {
                                                                         // move secrets operation to recycle bin ...
-                                                                        var success = cloneRenameMoveSecret (true, secretName, secretPath, secretName, $('#deleteToRecyclePath').val(), true);
+                                                                        var list = secretPath.split(FLDRCHR);
+                                                                        var recycleBinPath = VaultRecycleBinPath + FLDRCHR + secretPath.replaceAll('/', '__') + '_' + gfNowTimeStamp()
+                                                                        dbgInfo ("recyclebin item : " + secretName + secretPath + "  -->  " + recycleBinPath);
+                                                                        var success = cloneRenameMoveSecret (true, secretName, secretPath, secretName,  recycleBinPath, true);
                                                                         $(deleteDialogBox).dialog('close');
                                                                         if (! success)
                                                                             return;
@@ -2461,7 +2489,7 @@ function nodeDeleteItem (element, paths, operType="")
                                                                                         var node = treeInst.get_node(this);
 
                                                                                         if (typeof node.data.scrtName == "undefined")
-                                                                                            return; // igore this data structure.
+                                                                                            return; // ignore this data structure.
 
                                                                                         if ((node.data.scrtName + node.data.scrtPath) == key)
                                                                                             $("#searchOutput").jstree(true).delete_node(node);
@@ -2513,10 +2541,7 @@ function nodeDeleteItem (element, paths, operType="")
                                                                 {
                                                                     (async () =>
                                                                     {
-                                                                        if (deletedCurrentURL)
-                                                                            vaultUIGotoParentPath (vuiName + vuiPath); // go down one directory area upon a successful delete op of the Vault UI is in this location.
-                                                                        else
-                                                                            gfRefreshIFramePage ();
+                                                                        refreshGotoURI (vuiName + vuiPath); // go down one directory area upon a successful delete op of the Vault UI is in this location.
                                                                     })();
                                                                 }, 1000);
                                                            }
@@ -3551,11 +3576,15 @@ async function pasteAction ()
                 if  (idx+1 >= cutCopyList.length)
                 {
                     await (async () =>
-                    {                
+                    {   
+                        let cp = $("#vault_search_base_path").val();                    
+                        refreshGotoURI (cp);
+                        /************ does not always show changes results (i.e. results are cached)       
                         let cp = $("#vault_search_base_path").val();
                         vaultUIGotoPath ("");    
                         await new Promise(s => setTimeout(s, 100));                        
                         vaultUIGotoPath (cp);
+                        *************/
                     })();
                 }
             }
@@ -3677,11 +3706,13 @@ function cloneMoveActionDialog (srcPath="", destPath="", cloneType="radio-clone"
                                          else
                                              noteNorm ("Cloning operation completed successfully!");
 
-                                         // GOTO new cloned location...
+                                         // GOTO new cloned location...          
+                                        refreshGotoURI (destParamName + destParamPath);
+                        
                                          // Example Vault UI links:
                                          //    Type Folder      : "/vault/secrets/systems/list/keepass/Access%2520Day%2520Cards/"
                                          //    Type Secret/Leaf : "/vault/secrets/systems/show/keepass/Access%2520Day%2520Cards/ITS%2520Contractor%2520Card%25201"
-                                         vaultUIGotoPath(destParamName + destParamPath);
+                                         // vaultUIGotoPath(destParamName + destParamPath);
                                          $(this).dialog("close");
                                      }
 
@@ -4320,7 +4351,7 @@ function buildCurrentSecretPathSelectBox ()
         // example if VaultCurrentURL = '/vault/secrets/systems/show/keepass/DBA/db_audit'
         // then option should be this: '<option value="systems/:keepass/DBA/uow_db_audit">systems/keepass/DBA/uow_db_audit</option>'
         // and NOT this:               '<option value="systems/:keepass/DBA/uow_db_audit/">systems/keepass/DBA/uow_db_audit/</option>'
-        if (VaultCurrentURL.slice(-1) != FLDRCHR)
+        if (! vaultIsFolderPath(path))
         {
             options.pop();
             opPath       = gfRStrip(opPath, FLDRCHR);
@@ -4843,16 +4874,15 @@ function OnLoadIframeStyle ()
             <div id="deleteToRecycleBin" style="width:100%;font-family:monospace !important; font-size:medium !important;">
                 <table style="width:100%" border=0><tr><td>
                 <fieldset style="padding:0px;margin:0px;border-radius:4px;border-width:1px;padding-left: 2px;">
-                    <legend>Recycle to:</legend>
                     <table border=0>
                         <tr>
-                            <td style="white-space:nowrap;width:fit-content"> <input type="checkbox" id="deleteToRecycleChk" value="checked"></td>
-                            <td style="width:100%"><input style="width:100%;font-family:monospace" type="text" id="deleteToRecyclePath" class="text ui-widget-content ui-corner-all"/></td>
+                            <td style="white-space:nowrap;width:fit-content"><input type="checkbox" id="deleteToRecycleChk" value="checked">Move Deleted Items to Recycle Bin(s)</td>
                         </tr>
                     </table>
                 </fieldset>
                 </td></tr></table>
             </div>
+            
             <div id="deleteSearchOutput" style="font-family:monospace !important; font-size:medium !important;"></div>
         </div>
 
