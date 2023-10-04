@@ -199,7 +199,7 @@ function vaultUIGotoPath (secretNamePath)
         vaultUIGotoURI (VaultBaseGUIURI);
 }
 
-function vaultUIGotoParentPath (secretNamePath)
+function vaultParentPath (secretNamePath)
 {
     if (secretNamePath != "")
     {
@@ -210,11 +210,14 @@ function vaultUIGotoParentPath (secretNamePath)
         basePath = list.slice(0, list.length-1).join(FLDRCHR);
         if (basePath != "")
             basePath += FLDRCHR;
+        return baseName + basePath;
+    }
+    return secretNamePath;
+}
 
-        vaultUIGotoPath ( baseName + basePath);
-   }
-   else
-        vaultUIGotoPath (secretNamePath);
+function vaultUIGotoParentPath (secretNamePath)
+{
+    vaultUIGotoPath(vaultParentPath (secretNamePath));
 }
 
 function vaultActionStartEnd (actionEnded=false)
@@ -378,7 +381,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
     var path = "";
 
     dbgTrace ("vault_pathURLtoNamePath(0): " + vaultPathURL);    
-    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list|show|directory|details)";
+    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|details(\\??version.*)$)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {      
@@ -2541,7 +2544,7 @@ function nodeDeleteItem (element, paths, operType="")
                                                                 {
                                                                     (async () =>
                                                                     {
-                                                                        refreshGotoURI (vuiName + vuiPath); // go down one directory area upon a successful delete op of the Vault UI is in this location.
+                                                                        refreshGotoURI (vaultParentPath (vuiName + vuiPath)); // go down one directory area upon a successful delete op of the Vault UI is in this location.
                                                                     })();
                                                                 }, 1000);
                                                            }
@@ -3025,25 +3028,34 @@ async function vault_TokenAccessor (addr, token, accessorID=null)
          bdy = '';
     }
 
-    var rtn = await fetch (url,{
-                            method : 'POST',
-                            headers: { "x-vault-token" : token },
-                            cache: 'no-cache',
-                            body:   bdy,
-                          })
-                          .then(response => response.json())
-                          .then(data => {
-                            return data;
-                          })
-                          .catch((error) => {
-                               return null;
-                          });
-    if ("errors" in rtn)
+    try
     {
-        dbgWarn ("Failed vault_TokenAccessor:" + rtn.errors[0]);
-        return null;
+        var rtn = await fetch (url,{
+                                method : 'POST',
+                                headers: { "x-vault-token" : token },
+                                cache: 'no-cache',
+                                body:   bdy,
+                              })
+                              .then(response => response.json())
+                              .then(data => {
+                                return data;
+                              })
+                              .catch((error) => {
+                                   dbgWarn ("Failed vault_TokenAccessor(1):" + error);
+                                   return null;
+                              });
+        if ("errors" in rtn)
+        {
+            dbgWarn ("Failed vault_TokenAccessor(2):" + rtn.errors[0]);
+            return null;
+        }
+        return rtn;
     }
-    return rtn;
+    catch (error)
+    {
+        dbgWarn ("Failed vault_TokenAccessor(3):" + error);
+        return rtn;
+    }
 }
 
 async function vault_QueryRootTokens (addr, token)
