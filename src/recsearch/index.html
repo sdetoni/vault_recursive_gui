@@ -469,7 +469,7 @@ function nodeShowSecret (id)
         {
             var d = $('#searchOutput').jstree(true).get_node(id);
             // dbgInfo ("nodeShowSecret: Encrypt " + d.data);
-            $(id_2).html('<pre>' + await Cryptoe.decrypt(d.data) + '</pre>');
+            $(id_2).html('<pre>' + (await Cryptoe.decrypt(d.data)).replaceAll('<', '&lt;').replaceAll('>', '&gt;')  + '</pre>');
             $(id_1).removeClass("no-show-secret");
         }
         else
