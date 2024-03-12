@@ -811,13 +811,15 @@ async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='',
     // actual process nodejs http(s) request:
     var url_parts = url.parse(req.url);
     var token     = null;
+    var proxyHost = null;
     var baseName  = "";
     var basePath  = "";
 
     // console.log(url_parts);
     // console.log(url_parts.pathname);
     const queryObject = url.parse(req.url, true).query;
-    try { token = queryObject.token; } catch (error) { token = null; }
+    try { token     = queryObject.token;     } catch (error) { token = null; }
+    try { proxyHost = queryObject.proxyhost; } catch (error) { proxyHost = null; }
     if (! token)
     {
         try { token= req.headers['x-vault-token'];  } catch (error) { token = null; }
@@ -846,7 +848,31 @@ async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='',
                     
         if ((rtnData != null) && (Object.keys(rtnData).length > 0))
         {
-           // vaultDumpDict (rtnData);
+            // vaultDumpDict (rtnData);
+
+            // update the return data to match the proxy host being used...
+            if (proxyHost)
+            {
+                dbgInfo ("proxyhost parameter set as '"+ proxyHost + "'");
+                let newVaultAPICache  = { }; 
+                let counter = 0;
+                const getRtnHost = /^(http|https)(\:\/\/)(.*?)(\/.*)/gm;
+                for (var key in VaultAPICache) 
+                {
+                    // check key/url matches this hosts server, otherwise change it to match reverse proxy
+                    if (getRtnHost.exec(key))
+                    {
+                        // update source host name to proxy host name
+                        let newKey = key.replace(getRtnHost, "$1$2" + proxyHost +"$4");
+                        newVaultAPICache[newKey] = VaultAPICache[key];
+                        counter++;
+                    }
+                    else
+                        newVaultAPICache[key] = VaultAPICache[key];
+                }
+                VaultAPICache = newVaultAPICache;
+                dbgInfo ("proxyhost updated " + counter + " times into newVaultAPICache out of " + Object.keys(newVaultAPICache).length + " possible keys");
+            }
 
             noCache (res);
             res.writeHead(200, {'Content-Type': 'application/json'});

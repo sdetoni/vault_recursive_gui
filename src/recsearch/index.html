@@ -1385,6 +1385,33 @@ function chkReqCache (token)
     })();
 }
 
+async function LoadBulkData (bulkData)
+{
+    if (bulkData)
+    {
+        // check if request is coming from a proxy host. 
+        // update the returned key data to this req's proxy host
+        // replace https://vault.server.com/ to https://vault-proxy.server.com/
+        const getRtnHost = /^(http|https)(\:\/\/)(.*?)(\/.*)/gm;
+                            
+        // load and encrypt the data from bulk loader process
+        for (var key in bulkData) 
+        {
+             let m = getRtnHost.exec(key);                         
+
+            // check key/url matches this hosts server, otherwise change it to match reverse proxy
+            if (m && (m[3] != location.host))
+            {
+                // update source host name to proxy host name (i.e this web site's url)
+                let newKey = key.replace(getRtnHost, "$1$2" + location.host +"$4");                                
+                addReqCache (newKey, bulkData[key].json);
+            }
+            else                        
+                addReqCache (key, bulkData[key].json);
+        }
+    }
+}
+
 var ShowSearchTools   = false;
 var URLGotoActionTest = true;
 function AsyncCacheLoad ()
@@ -1455,7 +1482,7 @@ function AsyncCacheLoad ()
                 updateReqCacheIconStatusNow ();
                 
                 dbgInfo ("AsyncCacheLoad: async vaultbulkcacheloader cache loading ... ");              
-                let bulkData = await fetch(VaultAddr + '/vaultbulkcacheloader', {
+                let bulkData = await fetch(VaultAddr + '/vaultbulkcacheloader?proxyhost=' + location.host, {
                                         method: 'GET',
                                         headers: { "x-vault-token" : token },
                                         cache: 'no-cache'
@@ -1477,18 +1504,12 @@ function AsyncCacheLoad ()
                                             return null;
                                     });
                 if (bulkData)
-                {
-                    // load and encrypt the data from bulk loader process
-                    let counter = 0;
-                    for (var key in bulkData) 
-                    {
-                        addReqCache (key, bulkData[key].json);
-                        counter++;
-                    }
+                {                                        
+                    LoadBulkData (bulkData);
                   
                     let endTimeStamp   = new Date();
                     let elapsedSeconds = (endTimeStamp.getTime() - startTimeStamp.getTime()) / 1000;
-                    dbgInfo ("AsyncCacheLoad: vaultbulkcacheloader call returned, cache loaded in " + elapsedSeconds + " seconds loaded " + counter +  " urls!");
+                    dbgInfo ("AsyncCacheLoad: vaultbulkcacheloader call returned, cache loaded in " + elapsedSeconds + " seconds loaded " + Object.keys(bulkData).length +  " urls!");
                 }
                 else // failover to older method
                 {
@@ -1512,9 +1533,9 @@ function AsyncCacheLoad ()
                 let startTimeStamp = new Date();
                 AsyncCacheLoading = true;
                 updateReqCacheIconStatusNow ();
-                
+        
                 dbgInfo ("AsyncCacheLoad: async vaultbulkcacheloader cache refresh ... ");
-                let bulkData = await fetch(VaultAddr + '/vaultbulkcacheloader?token=' + token, {
+                let bulkData = await fetch(VaultAddr + '/vaultbulkcacheloader?proxyhost=' + location.host + '&token=' + token, {
                                         method: 'GET',
                                         headers: { "x-vault-token" : token },
                                         cache: 'no-cache'
@@ -1530,14 +1551,12 @@ function AsyncCacheLoad ()
                                             return null;
                                     });                
                 if (bulkData)
-                {
-                    // load and encrypt the data from bulk loader process
-                    for (var key in bulkData) 
-                        addReqCache (key, bulkData[key].json);
-                  
+                {                                   
+                    LoadBulkData (bulkData);
+                    
                     let endTimeStamp   = new Date();
                     let elapsedSeconds = (endTimeStamp.getTime() - startTimeStamp.getTime()) / 1000;
-                    dbgInfo ("AsyncCacheLoad: vaultbulkcacheloader call returned, cache refreshed in " + elapsedSeconds + " seconds loaded " + Object.keys(VaultAPICache).length +  " urls!");
+                    dbgInfo ("AsyncCacheLoad: vaultbulkcacheloader call returned, cache refreshed in " + elapsedSeconds + " seconds loaded " + Object.keys(bulkData).length +  " urls!");
                 }
                 else // failover to older method
                 {                
