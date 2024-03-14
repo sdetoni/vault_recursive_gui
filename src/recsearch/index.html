@@ -4724,9 +4724,41 @@ $(document).ready(function()
 </script>
 
 <script>
+var MaxTestsForBlankScreenCnt = 0;
 function OnLoadIframeStyle ()
 {
+    dbgInfo ("OnLoadIframeStyle() called!");
     AsyncCacheLoad ();    
+    
+    setTimeout(function() 
+    {
+        let testForEmberApp    = document.getElementById(FrameID).contentWindow.document.getElementsByClassName('ember-application');   
+        let testForBlankScreen = document.getElementById(FrameID).contentWindow.document.getElementsByClassName('hds-app-frame');   
+        
+        if (testForEmberApp)
+            dbgInfo ("OnLoadIframeStyle() test for blank testForEmberApp == " + testForEmberApp.length);
+            
+        if (testForBlankScreen)
+            dbgInfo ("OnLoadIframeStyle() test for blank testForBlankScreen == " + testForBlankScreen.length);
+            
+        if (MaxTestsForBlankScreenCnt > 2)
+        {
+            dbgInfo ("OnLoadIframeStyle() aborting test for blank Screen loop MaxTestsForBlankScreenCnt == " + MaxTestsForBlankScreenCnt);
+            MaxTestsForBlankScreenCnt = 0;
+            return;
+        }
+        
+        if ((testForEmberApp && testForEmberApp.length > 0) && (testForBlankScreen && testForBlankScreen.length <= 0))
+        {                
+            dbgInfo ("OnLoadIframeStyle() : detected blank screen, calling frame reload()!");
+            document.getElementById(FrameID).contentWindow.location.reload();
+            MaxTestsForBlankScreenCnt++;
+        }
+        else
+        {
+            dbgInfo ("OnLoadIframeStyle() : page looks to have loaded normally, exiting normally");
+        }
+    }, 200);  
 }
 </script>
 <script src="js_libs/customisation.js"></script>
