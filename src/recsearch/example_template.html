@@ -75,6 +75,33 @@ function VaultLoginAppRole ([string]$role_id, [string]$secret_id, [string]$metho
     return $null
 }
 
+#return vault session info
+function VaultLookupSelfToken([string]$token, [string]$vaultAddrs=$G_VaultAddrs)
+{
+    $params = @{ 'token' = $token }      
+    $result = $null;
+    try
+    {
+        $result = Invoke-RestMethod -Method 'Get' -Uri ($vaultAddrs+'/v1/auth/token/lookup-self')  -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
+    }
+    catch
+    {
+        Throw ("Failed to lookup token " + $error[0])
+    }
+
+    if ($result)
+    {
+        if ($result.GetType().Name -eq 'PSCustomObject')
+        {
+            if ($result | Get-Member -Name data)
+            {
+                return $result.data;
+            }
+        }
+    }
+    return $null
+}
+
 function VaultReadSecret ([string]$token, [string]$accessPath, [string]$vaultAddrs=$G_VaultAddrs)
 {
     try
@@ -115,17 +142,89 @@ function VaultLogout([string]$token, [string]$vaultAddrs=$G_VaultAddrs)
 }
 
 
-# Example Vault code
-write-host "Enter password"
-$pwd = Read-Host -AsSecureString
-$save = $Host.UI.RawUI.ForegroundColor
-$Host.UI.RawUI.ForegroundColor = 'White'
-$bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
-$password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-[Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
-$Host.UI.RawUI.ForegroundColor = $save
+# returns True/False if token is still valid, or throw error on network fault.
+# if $checkMinutesExpiry > 0  minutes. Calling VaultTestToken, if a token session is about to expire <=  $checkMinutesExpiry, VaultTestToken will return false
+function VaultTestToken ([string]$token, [string]$vaultAddrs=$G_VaultAddrs, [int]$checkMinutesExpiry=-1)
+{
+    try
+    {
+        $tokenInfo  = VaultLookupSelfToken -token $token
 
-$auth  = VaultLogin -username <b>'%USERNAME%'</b> -password $password
+        if ($tokenInfo)
+        {
+            if ($checkMinutesExpiry -gt 0)
+            {
+                $expireTime = [Datetime]::ParseExact($tokenInfo.expire_time.split('.')[0], 'yyyy-MM-ddTHH:mm:ss', $Null)            
+                $diffTime   = $expireTime - [datetime]::Now
+
+                # write-host ("VaultTestToken: Callstack = " + (Get-PSCallStack | out-string))            
+                # write-host  "VaultTestToken: Session token expires in [ $([math]::Round($diffTime.TotalHours)) ] Hours" 
+                # write-host  "VaultTestToken: Session token expires in [ $([math]::Round($diffTime.TotalMinutes)) ] Minutes  checkMinutesExpiry = $checkMinutesExpiry" 
+
+                if ($diffTime.TotalMinutes -le $checkMinutesExpiry)
+                {
+                    return $false
+                }           
+            }
+            return $true
+        }
+    }
+    catch
+    {   
+         write-error ("Failed to test token from " + ($vaultAddrs+'/v1/auth/token/lookup-self') + "  " + $($error[0] | Out-String)) 
+    }
+
+    return $false
+}
+
+$global:G_VaultAuth = $null
+function StickyVaultLogin ([string]$username='', [string]$password='', [string]$server=$GLOBAL:G_VaultAddrs, [int]$checkMinutesExpiry=60, [switch]$setLoginEnvVar)
+{
+    if ($global:G_VaultAuth -ne $null)
+    {
+        if (VaultTestToken -token $global:G_VaultAuth.client_token -checkMinutesExpiry $checkMinutesExpiry)
+        {
+            return $global:G_VaultAuth
+        }
+    }
+    elseif ($env:VAULT_LOGIN_TOKEN -ne $null)
+    {
+        if (VaultTestToken -token $env:VAULT_LOGIN_TOKEN  -checkMinutesExpiry $checkMinutesExpiry)
+        {
+            $global:G_VaultAuth = @{'client_token' = $env:VAULT_LOGIN_TOKEN}
+            return $global:G_VaultAuth
+        }
+    }
+    
+    if ($username -eq '')
+    {
+        write-host "Enter Vault username"
+        $username = Read-Host        
+    }
+
+    if ($password -eq '')
+    {
+        write-host "Enter LDAP Vault password for $username"
+        $pwd = Read-Host -AsSecureString
+        $bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
+        $password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+        [Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
+    }
+
+    $auth  = VaultLogin -username $username -password $password 
+    $global:G_VaultAuth = $auth 
+
+    if (($auth -and $auth.client_token) -and $setLoginEnvVar)
+    { 
+        $env:VAULT_LOGIN_TOKEN = $auth.client_token
+    }
+
+    return $auth
+}
+
+# Example Vault code
+
+$auth  = StickyVaultLogin -username $VaultUsername -password $password -setLoginEnvVar
 #$auth = VaultLoginAppRole -role_id $roleID -secret_id $secretID
 
 $secret = VaultReadSecret  -token $auth.client_token  -accessPath <b>'%SECRET-PATH%'</b>
@@ -139,104 +238,8 @@ VaultLogout -token $auth.client_token
 
 <h3><u>Powershell V-Sphere (VMWare) Example</u></h3>
 <pre class="prettyprint lang-powershell" style="font-family:Consolas; font-size:11px;background-color:ghostwhite;">
-$GLOBAL:G_VaultAddrs = "%SERVER-URL%"
-
-# return  $null or login token details in client_token attribute upon success
-function VaultLogin ([string]$username, [string]$password, [string]$method="ldap", [string]$vaultAddrs=$G_VaultAddrs)
-{
-    $params = @{ 'password' = $password }        
-    try
-    {
-        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'}
-    }
-    catch
-    {
-        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login/'+$username) + "  " + $error[0])
-    }
-
-    if ($result)
-    {
-        if ($result.GetType().Name -eq 'PSCustomObject')
-        {
-            if ($result | Get-Member -Name auth)
-            {
-                return $result.auth;
-            }
-        }
-    }
-    return $null
-}
-
-# return  $null or login token details in client_token attribute upon success
-function VaultLoginAppRole ([string]$role_id, [string]$secret_id, [string]$method="approle", [string]$vaultAddrs=$G_VaultAddrs)
-{
-    $params = [Ordered]@{    
-	    role_id = $role_id    
-	    secret_id = $secret_id
-    } | ConvertTo-Json -Compress      
-    try
-    {
-        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/'+$method+'/login') -body $params
-    }
-    catch
-    {
-        Throw ("Failed to Login using " + ($vaultAddrs+'/v1/auth/'+$method+'/login') + "  " + $error[0])
-    }
-
-    if ($result)
-    {
-        if ($result.GetType().Name -eq 'PSCustomObject')
-        {
-            if ($result | Get-Member -Name auth)
-            {
-                return $result.auth;
-            }
-        }
-    }
-    return $null
-}
-
-function VaultReadSecret ([string]$token, [string]$accessPath, [string]$vaultAddrs=$G_VaultAddrs)
-{
-    try
-    {
-        $result = Invoke-RestMethod -Method 'Get' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/'+$accessPath) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
-    }
-    catch
-    {
-        Throw ("Failed to get secret from " + ($vaultAddrs+'/v1/'+$accessPath) + "  " + $error[0])
-    }
-
-    if ($result)
-    {
-        if ($result.GetType().Name -eq 'PSCustomObject')
-        {
-            if ($result | Get-Member -Name data)
-            {
-                return $result.data.data;
-            }
-        }
-    }
-    return $null
-}
-
-function VaultLogout([string]$token, [string]$vaultAddrs=$G_VaultAddrs)
-{
-    $params = @{ 'token' = $token }        
-    try
-    {
-        $result = Invoke-RestMethod -Method 'Post' -ContentType 'application/json' -Uri ($vaultAddrs+'/v1/auth/token/revoke-self')  -body ($params|ConvertTo-Json) -Headers @{'X-Vault-Request'='true'; 'X-Vault-Token'=$token}
-    }
-    catch
-    {
-        Throw ("Failed to revoke token " + $error[0])
-    }
-
-    return $true
-}
 
 # ============================================================================================
-
 
 $VaultWinAdminPath = "%SECRET-PATH%"
 $VaultUsername     = "%USERNAME%"
@@ -250,10 +253,9 @@ $bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
 $password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
 [Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
 $Host.UI.RawUI.ForegroundColor = $save
-$auth  = VaultLogin -username $VaultUsername -password $password
+$auth = VaultLogin -username $VaultUsername -password $password
 Remove-Variable password
 Remove-Variable pwd
-
 
 # ============================================================================================
 
