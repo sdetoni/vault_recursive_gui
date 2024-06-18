@@ -167,8 +167,19 @@ function vaultUIGotoURI (uri, closeDialog=true)
     dbgInfo ("vaultUIGotoURI: " + p);
 
     // Vault EMBER magic code to redirect to the correct page
-    var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute ( gfURLEncode(p) );
-    r.followRedirects();
+    try
+    {
+        // v1.16 and before
+        var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute ( gfURLEncode(p) );
+        r.followRedirects();
+    }
+    catch(err)
+    {
+        // v1.17 change 
+        var r = getVaultEmberObj().__container__.lookup("controller:application").target.transitionTo ( gfURLEncode(p) );
+        r.followRedirects();
+    }
+    
     VaultCurrentURL = "";
 
     try { ThisSrchResultsDialogBox.dialog("close"); } catch(err) { }
