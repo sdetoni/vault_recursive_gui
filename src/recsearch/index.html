@@ -160,23 +160,26 @@ function vaultDoDeepLinkURL (uri)
     noteNorm( String.fromCharCode(39)+ u + String.fromCharCode(39) + " copied into clipboard");
 }
 
-function vaultUIGotoURI (uri, closeDialog=true)
+function vaultUIGotoURI (uri, closeDialog=true, reEncodeURL=true)
 {
-    var p =  unescape(uri);
-
-    dbgInfo ("vaultUIGotoURI: " + p);
+    var gotoURL = unescape(uri);
 
     // Vault EMBER magic code to redirect to the correct page
+    if (reEncodeURL)
+        gotoURL = gfURLEncode(gotoURL);
+
+    dbgInfo ("vaultUIGotoURI: " + gotoURL);
+    
     try
     {
         // v1.16 and before
-        var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute ( gfURLEncode(p) );
+        var r = getVaultEmberObj().__container__.lookup("controller:application").transitionToRoute ( gotoURL );
         r.followRedirects();
     }
     catch(err)
     {
         // v1.17 change 
-        var r = getVaultEmberObj().__container__.lookup("controller:application").target.transitionTo ( gfURLEncode(p) );
+        var r = getVaultEmberObj().__container__.lookup("controller:application").target.transitionTo ( gotoURL );
         r.followRedirects();
     }
     
@@ -365,8 +368,8 @@ else if url matches /v1/<base name>/data/<path> then
 else
     path = vault/secrets/<base name>/show/<path>
 ******************** */
-    var regex = /(.*?)\/v1\/(.*?)\/metadata\/(.*)(\?list.*)/;
-    var grpMatch = apiURL.match(regex)
+    let regex = /(.*?)\/v1\/(.*?)\/metadata\/(.*)(\?list.*)/;
+    let grpMatch = apiURL.match(regex)
     if (grpMatch)
     {
         // Check/construct url is a leaf node, and so will have a 'show' action
@@ -378,9 +381,11 @@ else
     }
 
     regex = /(.*?)\/v1\/(.*?)\/data\/(.*)/;
-    if (apiURL.match(regex))
+    let m = apiURL.match(regex);
+    if (m)
     {
-        return apiURL.replace(regex, '/vault/secrets/$2/show/$3');
+        // v 1.18.x changed how secret info is linked in the rest api url
+        return  apiURL.replace(regex, '/vault/secrets/$2/kv/' + m[3].replaceAll('/', '%2F') + '/details');
     }
 
     return apiURL.replace(/(.*?)\/v1\/(.*?)\/(.*)/, '/vault/secrets/$2/show/$3');
@@ -461,7 +466,7 @@ function nodeShowAdminIcons (id)
 function vault_makeFolderLink (text, id, isEndFolder, apiURL, secretVersion, secretName, secretPath)
 {
     var s = "";
-    s += "<a title='Goto Vault Item' class='fas fa-link vgoto-link1'      onclick='vaultUIGotoURI(\"" + escape(vault_apiURLtoPath (apiURL)) + "\");' href='#'></a>&nbsp;";
+    s += "<a title='Goto Vault Item' class='fas fa-link vgoto-link1'      onclick='vaultUIGotoURI(\"" + escape(vault_apiURLtoPath (apiURL)) + "\", true, false);' href='#'></a>&nbsp;";
 
     s += "<a id='" + id + "_1" + "'  title='Admin Features' class='fas fa-angle-double-right vgoto-link1' onclick='nodeShowAdminIcons(\"" + id + "\");' href='#'>&nbsp;</a>";
     s += "<span  id='" + id + "_2" + "' class='stree-admenu'>";    
