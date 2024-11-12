@@ -2021,6 +2021,12 @@ function runSearch (secretNamePath = null)
     //var srchTxt = $('#vault_search').val();
     var srchTxt = gfTrim($('#vault_search').next().find('input').val(), ' ');
 
+    // prevent this issue "test_mount_point/" "/test space/", needs to "test_mount_point/" "test space/"
+    if ((basePath != '' && basePath[0] == FLDRCHR) && (baseName != '' && baseName[baseName.length-1] == FLDRCHR))
+    {
+        basePath = gfLStrip (basePath, FLDRCHR);
+    }
+       
     dbgInfo ("runSearch: BaseName  : " + baseName);
     dbgInfo ("runSearch: BasePath  : " + basePath);
     dbgInfo ("runSearch: RegExp    : " + srchTxt);
