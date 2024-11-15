@@ -223,9 +223,22 @@ function StickyVaultLogin ([string]$username='', [string]$password='', [string]$
 }
 
 # Example Vault code
+$VaultWinAdminPath = "%SECRET-PATH%"
+$VaultUsername     = "%USERNAME%"
+ 
+$pwd = Read-Host -prompt "Enter Vault LDAP password for user '$VaultUsername'" -AsSecureString
+$save = $Host.UI.RawUI.ForegroundColor
+$Host.UI.RawUI.ForegroundColor = 'White'
+$bstr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($pwd)
+$password=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+[Runtime.InteropServices.Marshal]::FreeBSTR($bstr)
+$Host.UI.RawUI.ForegroundColor = $save
 
 $auth  = StickyVaultLogin -username $VaultUsername -password $password -setLoginEnvVar
 #$auth = VaultLoginAppRole -role_id $roleID -secret_id $secretID
+
+Remove-Variable password
+Remove-Variable pwd
 
 $secret = VaultReadSecret  -token $auth.client_token  -accessPath <b>'%SECRET-PATH%'</b>
 

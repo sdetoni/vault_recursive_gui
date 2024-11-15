@@ -206,8 +206,12 @@ function vaultUIGotoPath (secretNamePath)
             vaultUIGotoURI (VaultBaseGUIURI + FLDRCHR + baseName + 'list' + FLDRCHR + basePath);
         else if (basePath == "")
             vaultUIGotoURI (VaultBaseGUIURI + FLDRCHR + baseName + 'list');
-        else
-            vaultUIGotoURI (VaultBaseGUIURI + FLDRCHR + baseName + 'show' + FLDRCHR + basePath);
+        else // v1.18.x change 
+        {
+            let u = VaultBaseGUIURI + FLDRCHR + baseName + 'kv' + FLDRCHR + escape(escape(basePath).replaceAll('/', '%2F')) + '/details';
+            dbgInfo ("vaultUIGotoPath (details): " +u);
+            vaultUIGotoURI (u, true, false);
+        }
     }
     else
         vaultUIGotoURI (VaultBaseGUIURI);

@@ -35,7 +35,7 @@ Example Software Stack
 Download NodeJS, Caddy, and Vault:
 - NodeJS    https://nodejs.org/dist/v16.17.0/node-v16.17.0-win-x64.zip
 - Caddy     https://caddyserver.com/download
-- Vault     https://releases.hashicorp.com/vault/1.12.1/vault_1.12.1_windows_amd64.zip
+- Vault     https://releases.hashicorp.com/vault/1.18.1/vault_1.18.1_windows_amd64.zip
        
 Review boot.cmd to see boot sequence:
   - refer to file **vault-recovery-keys-root-token.json** for **root_token**
