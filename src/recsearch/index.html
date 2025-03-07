@@ -4761,7 +4761,7 @@ $(document).ready(function()
         {
             if (event.key == "Enter")        
             {   
-                vaultUIGotoPath ($("#gotosecretpath_input").val());
+                vaultUIGotoPath (decodeURI($("#gotosecretpath_input").val()));
                 $('#gotosecretpath').css('display', 'none');
             }
         }
