@@ -3203,8 +3203,12 @@ async function vault_ItemExists (addr, token, version, name, path)
 }
 
 async function vault_CloneWriteData (addr, token, version, name, path, dataTree)
-{
-    dbgInfo ("vault_CloneWriteData: '" + name + path + "'")
+{    
+    dbgInfo ("vault_CloneWriteData pre-validate: '" + name + path + "'")
+    let rtnPath = rtnValidPath (name, path);
+    name = rtnPath[0];
+    path = rtnPath[1];
+    dbgInfo ("vault_CloneWriteData validated: '" + name + path + "'")  
 
     /* Given a path of systems/keepass/mysecret
           name        = systems/
@@ -3347,7 +3351,7 @@ async function cloneRenameMoveSecret (moveRenameOper, srcName, srcPath, destName
         {
             if  (! forceOper)
             {
-                if (! confirm('Destination Path Exist: ' +  destName + destPath + '\nOk to overwrite data at this location?'))
+                if (! confirm('Destination Path Already Exists: ' + rtnValidPath (destName, destPath).join('') + '\nOk to overwrite matching data at this location?'))
                 {
                     vaultActionStartEnd (true);
                    return false;
@@ -3400,7 +3404,7 @@ async function cloneRenameMoveSecret (moveRenameOper, srcName, srcPath, destName
         var moveRenameCount = nodeDeleteCountDict (dataTree);
         if ((moveRenameOper) && (moveRenameCount >= 4) && (! forceOper))
         {
-             if (confirm('Confirm rename/move of ' + moveRenameCount + ' items from:\n' + srcName + srcPath + '\nto\n' +  destName + destPath))
+             if (confirm('Confirm rename/move of ' + moveRenameCount + ' items from:\n' + rtnValidPath (srcName, srcPath).join('') + '\nto\n' + rtnValidPath (destName, destPath).join('')))
              {
                  if (await vault_CloneWriteData (VaultAddr, token, destVersion, destName, destPath, dataTree))
                  {
@@ -3440,6 +3444,26 @@ function clrClipAction ()
     $("#clipCutCopyView").css("display",    "none");
 }
 
+function rtnValidPath (name, path)
+{
+    name = unescape(name);
+    path = unescape(path).split('?')[0];
+    
+    // # weed out /mountpoint/ /secret path/ -to-> /mountpoint/ /secret path/ -to-> /mountpoint//secret path/
+    // convert    /mountpoint/ /secret path/ -to-> /mountpoint/ secret path/  -to-> /mountpoint/secret path/
+    if ( ((name.length > 0) && (path.length > 0)) && 
+         (name[name.length-1] == FLDRCHR) && (path[0] == FLDRCHR) )
+    {
+        path = gfTrimLeft(path, FLDRCHR);            
+    }    
+    return [name, path];    
+}
+function rtnCutCopyCurrentPath ()
+{
+    let rtnVals = vault_pathURLtoNamePath (VaultCurrentURL);
+    return rtnValidPath (rtnVals[0], rtnVals[1]).join('');
+}
+
 // oper:
 //  cut (current path)
 //  copy (current path)
@@ -3458,9 +3482,7 @@ function cutCopyAction (oper, operPaths = "", parentWin = '')
     // Load settings into clipboard view
     if ((operPaths == null) || (operPaths == ""))
     {
-        var rtnVals = vault_pathURLtoNamePath (VaultCurrentURL);
-
-        operPaths = unescape(rtnVals[0]) + unescape(rtnVals[1]);
+        operPaths = rtnCutCopyCurrentPath ();
         if ((operPaths) == "")
             return;
     }
@@ -4544,7 +4566,7 @@ setInterval(function()
             buildCurrentSecretPathSelectBox ();
 
             // Display the preview of destination path in the clipboard area
-            $("#clipVaultDestPath").text (name + path);
+            $("#clipVaultDestPath").text (rtnCutCopyCurrentPath ());
 
             // Update progInfo-action icon to be enabled or disabled based upon the current Vault path
             if ((path == "") || path.endsWith(FLDRCHR))

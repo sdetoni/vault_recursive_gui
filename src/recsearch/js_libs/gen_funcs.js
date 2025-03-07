@@ -64,17 +64,27 @@ function gfShowPage (url)
     return false;
 }
 
-function gfTrim(str, ch) {
-    var start = 0, 
-        end = str.length;
+function gfTrimLeft(str, ch=' ') {
+    var start = 0, end = str.length;
 
     while(start < end && str[start] === ch)
         ++start;
+
+    return (start > 0 || end < str.length) ? str.substring(start, end) : str;
+}
+
+function gfTrimRight(str, ch=' ') {
+    var start = 0, end = str.length;
 
     while(end > start && str[end - 1] === ch)
         --end;
 
     return (start > 0 || end < str.length) ? str.substring(start, end) : str;
+}
+
+function gfTrim(str, ch=' ') 
+{
+    return gfTrimRight(gfTrimLeft(str, ch),ch)
 }
       
 
