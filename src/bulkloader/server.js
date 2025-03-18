@@ -758,8 +758,24 @@ async function vault_FetchQueryRootMounts (addr, token, name, path, regMatch='',
 
             if (secrets[key]['type'] == 'kv')
             {
+                // Debugging log before calling the function
+                console.warn(`Debug: Checking secrets[${key}]`, secrets[key]);
 
-                var rtnVals = await vault_FetchQueryKVSecrets (addr, token, secrets[key]['options']['version'], key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
+                // Ensure secrets[key] exists
+                if (!secrets[key]) {
+                    console.error(`Error: secrets[${key}] is missing! Initializing empty object.`);
+                    secrets[key] = {};
+                }
+
+                // Ensure options is always an object with a default version of '1'
+                if (!secrets[key]['options']) {
+                    console.error(`Warning: secrets[${key}]['options'] is NULL! Initializing with default version.`);
+                    secrets[key]['options'] = { version: '1' };  // Default version set to '1'
+                }
+
+                // Use the version from options, defaulting to '1' if missing
+                var rtnVals = await vault_FetchQueryKVSecrets(addr, token, secrets[key]['options']['version'] ?? '1', key, path, regMatch, false, matchFolderType, notRegMatchPath, true, ignoreVaultAbortSearch);
+
                 if (rtnVals == null)
                 {
                     dbgError ("####### vault_FetchQueryRootMounts : NULL Return 1! Exiting Loaded " + Object.keys(VaultAPICache).length +  ", pending " + Object.keys(VaultAPIPending).length + " urls!");
