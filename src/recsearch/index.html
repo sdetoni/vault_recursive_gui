@@ -412,7 +412,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }
     
-    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|details(\\??version.*)$)";
+    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|metadata$|paths$|metadata/versions$|details(\\??version.*)$)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {      
