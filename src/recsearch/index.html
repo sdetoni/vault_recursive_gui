@@ -400,10 +400,10 @@ function vault_pathURLtoNamePath (vaultPathURL)
     var name = "";
     var path = "";
 
-    var regex = "/vault/secrets/(.*/)(kv/list)(.*)";
+    var regex = "/vault/secrets/(.*/)(kv/list)/(.*)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
-    {      
+    {        
         name = matchNamePath[1];
         path = matchNamePath[3];
         if (path == "/")
@@ -495,7 +495,7 @@ function nodeClipboardCopy (key, id)
     {
         var d = $('#searchOutput').jstree(true).get_node(id);
         gfCopyToClipboard(await Cryptoe.decrypt(d.data));
-        noteNorm('"' + unescape(key) + '" data copied into clipboard');
+        noteNorm('<span style="font-size:large;font-weight:bold">' + unescape(key) + '</span><br>data copied into clipboard');
     })();
 }
 
@@ -2107,6 +2107,12 @@ function runSearch (secretNamePath = null)
                 //DebugMode  = DebugTrace;
                 //vaultDumpDict (rtnData);
                 dbgInfo ("runSearch: Converting search results");
+                if (basePath != "")
+                {
+                    var newRtnData = {};
+                    newRtnData[baseName + basePath] = rtnData[Object.keys(rtnData)[0]];
+                    rtnData = newRtnData;
+                }
                 var treeData = await vault_jsTreeSearchDict (rtnData);
 
                 //vaultDumpDict (treeData);
@@ -2170,9 +2176,8 @@ function runSearch (secretNamePath = null)
                 var w             = (window.innerWidth  / 100) * 90;
                 var toolBarHeight = $('#iframe_table table tr').eq(0).height();
                 ThisSrchResultsDialogBox = $("#searchDialog").dialog({
-                                            maxHeight: h,
-                                            maxWidth:  w,
                                             width:     'auto',                                             
+                                            height:     h,
                                             autoOpen:  false,
                                             modal:     false,
                                             show:      'fold',
@@ -2410,14 +2415,23 @@ function nodeDeleteItem (element, paths, operType="")
 
                 // store these details for later actual delete action...
                 pathParamList[path] = {scrtVersion: secretVer, scrtName:secretName,  scrtPath:secretPath, delItems:childItems};
-
+                
+                let isLeafNode  = false;
+                let isEndFolder = false;
+                
+                // if no children items, then this item much be a leaf item ... 
+                if (Object.keys(childItems).length <= 0)
+                {
+                    isLeafNode = isEndFolder = true;                    
+                }
+                
                 // Add this call as the parent into the dict list
                 deleteItems[secretName+secretPath] = { apiURL: 'NOT USED',
                                                                 scrtVersion: secretVer,
                                                                 scrtName:    secretName,
                                                                 scrtPath:    secretPath,
-                                                                isLeafNode:  false,
-                                                                isEndFolder: false,
+                                                                isLeafNode:  isLeafNode,
+                                                                isEndFolder: isEndFolder,
                                                                 data:        null,
                                                                 child:       childItems
                                                      };
@@ -2553,6 +2567,7 @@ function nodeDeleteItem (element, paths, operType="")
                                                                     }
                                                                     else // delete operation ...
                                                                     {
+                                                                    
                                                                         nodeDeleteDict (VaultAddr, token, delItems);
                                                                         $(deleteDialogBox).dialog('close');
                                                                     }
@@ -5021,7 +5036,7 @@ function OnLoadIframeStyle ()
         <!-- ############################################################################################################ -->
 
         <div id="deleteDialog">
-            <div id="deleteToRecycleBin" style="width:100%;font-family:monospace !important; font-size:medium !important;">
+            <div id="deleteToRecycleBin" style="z-index:120;width:100%;font-family:monospace !important; font-size:medium !important;">
                 <table style="width:100%" border=0><tr><td>
                 <fieldset style="padding:0px;margin:0px;border-radius:4px;border-width:1px;padding-left: 2px;">
                     <table border=0>
