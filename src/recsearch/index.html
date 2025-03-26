@@ -398,8 +398,10 @@ else
 function vault_pathURLtoNamePath (vaultPathURL)
 {
     var name = "";
-    var path = "";
+    var path = "";   
 
+    dbgTrace ("vault_pathURLtoNamePath(Parsing): >" + vaultPathURL + "<");
+    
     var regex = "/vault/secrets/(.*/)(kv/list)/(.*)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
@@ -412,7 +414,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }
     
-    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|metadata$|paths$|metadata/versions$|details(\\??version.*)$)";
+    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|configuration$|metadata$|paths$|metadata/versions$|details(\\??version.*)$)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {      
@@ -420,7 +422,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         path = matchNamePath[4];
         if (path == "/")
             path = "";
-        dbgTrace ("vault_pathURLtoNamePath(2): name : >" + name + "< path: >" + path + "<");
+        dbgTrace ("vault_pathURLtoNamePath(2): name: >" + name + "< path: >" + path + "<");
         return [name, path];
     }
      
@@ -430,7 +432,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
     {    
         name = matchNamePath[1];
         path = matchNamePath[3];
-        dbgTrace ("vault_pathURLtoNamePath(3): name : >" + name + "< path: >" + path + "<");
+        dbgTrace ("vault_pathURLtoNamePath(3): name: >" + name + "< path: >" + path + "<");
         return [name, path];
     }        
     
@@ -440,20 +442,20 @@ function vault_pathURLtoNamePath (vaultPathURL)
     {    
         name = matchNamePath[1];
         path = matchNamePath[3];
-        dbgTrace ("vault_pathURLtoNamePath(4): name : >" + name + "< path: >" + path + "<");
+        dbgTrace ("vault_pathURLtoNamePath(4): name: >" + name + "< path: >" + path + "<");
         return [name, path];
     }
-
-    regex             = "/vault/secrets/(.*/)list";
+    
+    regex             = "/vault/secrets/(.*/)(list$|configuration$)";
     var matchBaseName = vaultPathURL.match(regex);
     if (matchBaseName)
     {
         name = matchBaseName[1];
-        dbgTrace ("vault_pathURLtoNamePath(5): name : >" + name + "< path: >" + path + "<");
+        dbgTrace ("vault_pathURLtoNamePath(5): name: >" + name + "< path: >" + path + "<");
         return [name, path];
     }
 
-    dbgTrace ("vault_pathURLtoNamePath(6): name : >" + name + "< path: >" + path + "<");
+    dbgTrace ("vault_pathURLtoNamePath(No Matches)");
     return [name, path];
 }
 
@@ -2172,12 +2174,15 @@ function runSearch (secretNamePath = null)
                 $('#searchOutput').jstree(true).show_all();
                 $('#searchOutput').jstree("open_all");
 
-                var h             = (window.innerHeight / 100) * 90;
-                var w             = (window.innerWidth  / 100) * 90;
+                var hDisp         = (window.innerHeight / 100) * 90;
+                var wDisp         = (window.innerWidth  / 100) * 90;
                 var toolBarHeight = $('#iframe_table table tr').eq(0).height();
+                
                 ThisSrchResultsDialogBox = $("#searchDialog").dialog({
+                                            maxHeight: hDisp,
+                                            maxWidth:  wDisp,                
                                             width:     'auto',                                             
-                                            height:     h,
+                                            height:    'auto',
                                             autoOpen:  false,
                                             modal:     false,
                                             show:      'fold',
@@ -2192,7 +2197,7 @@ function runSearch (secretNamePath = null)
 
                                             // Store search data in dialog as an attribute
                                             output_vault: rtnData,
-                                            output_jstree: treeData,
+                                            output_jstree: treeData                                        
                                         });
 
                 // hack to insert icons
