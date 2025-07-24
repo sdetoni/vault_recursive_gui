@@ -388,12 +388,15 @@ class gfCryptStdCrypto
         this.rndSize = rndSize;
         this.bitSize = bitSize;        
         return await (async () =>
-        {         
-            let key = new Uint8Array(16);
+        {            
+            let key  = window.crypto.getRandomValues(new Uint8Array(16));  // new Uint8Array(16);
             this.generatedKey = await crypto.subtle.importKey(  "raw",    key.buffer,   'AES-CTR' ,  false,   ["encrypt", "decrypt"]);   
+            
+            for (let idx = 0; idx < key.length; idx++)
+                key[idx] = 0;
         })();            
     }
-
+    
     // Convert a hex string to a byte array
     hexToBuffer (hex) 
     {
