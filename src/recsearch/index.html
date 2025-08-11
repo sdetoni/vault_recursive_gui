@@ -3962,6 +3962,16 @@ async function BecomeAsToken (token)
                 return;
             }
         }
+       
+        // try this method if the above fails, new method for vault 1.20
+        let pw = ifr.contentWindow.document.querySelectorAll('[type="password"]')
+        if (pw.length > 0)
+        {
+            pw[0].value = token;
+            ifr.contentWindow.document.querySelectorAll('[type="submit"]')[0].click();
+            clearInterval(pgTst);
+            return;
+        }
         
         if (maxTries < 0)
         {
