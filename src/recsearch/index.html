@@ -1501,7 +1501,9 @@ function AsyncCacheLoad ()
             URLGotoActionTest = false;            
             let vp = gfGetParameterByName("goto");
             if (vp)
-            {
+            {                
+                dbgTrace ("Goto Param = " + vp);
+                dbgTrace ("Goto Param Unescape = " + unescape(vp));
                 vaultUIGotoPath (unescape(vp));
             }
         }
@@ -4831,7 +4833,7 @@ $(document).ready(function()
         {
             if (event.key == "Enter")        
             {   
-                vaultUIGotoPath (decodeURI($("#gotosecretpath_input").val()));
+                vaultUIGotoPath (unescape($("#gotosecretpath_input").val()));
                 $('#gotosecretpath').css('display', 'none');
             }
         }
@@ -4912,7 +4914,7 @@ function OnLoadIframeStyle ()
                 </span>
                                 
                 <span id="copy-secret-path" style="font-size:9px;position:relative;top:6px;left:-12px;width:12px;margin:-10px">
-                    <a id="copy-secret-path-icon" href="#" onclick="let p = vault_pathURLtoNamePath (VaultCurrentURL); if(p[0]+p[1] == '') { noteError('current path is blank'); return; } gfCopyToClipboard(decodeURI(p[0]+p[1])); noteNorm ('Copied path &quot'+decodeURI(p[0]+p[1])+'&quot to the clipboard')" title="copy current secrets path"><i class=" far fa-clone hover-red"></i></a>
+                    <a id="copy-secret-path-icon" href="#" onclick="let p = vault_pathURLtoNamePath (VaultCurrentURL); if(p[0]+p[1] == '') { noteError('current path is blank'); return; } gfCopyToClipboard(unescape(p[0]+p[1])); noteNorm ('Copied path &quot'+unescape(p[0]+p[1])+'&quot to the clipboard')" title="copy current secrets path"><i class=" far fa-clone hover-red"></i></a>
                 </span>
                 
                 <span id="goto-secret-path" style="font-size:9px;position:relative;top:-7px;left:-5px;width:12px;margin:-10px">
