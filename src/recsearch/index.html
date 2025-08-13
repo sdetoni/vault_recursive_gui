@@ -3260,7 +3260,7 @@ async function vault_CloneWriteData (addr, token, version, name, path, dataTree)
     return await (async () =>
     {
         for (var k in dataTree)
-        {
+        {        
             if ((dataTree[k]["child"] != null) && (dataTree[k]["isEndFolder"] == false))
             {
                 var writePath = path;
@@ -3296,22 +3296,17 @@ async function vault_CloneWriteData (addr, token, version, name, path, dataTree)
                         cache: 'no-cache',
                         body: secretJSON
                     })
-                    .then(data => {
-                         if (data.status == 200)
-                         {
-                            dbgInfo('vault_CloneWriteData: Success:' + name + writePath);
-                            return true;
-                         }
-                         dbgError  ("vault_CloneWriteData: Return status code != 200, got " + data.status);
-                         dbgError  ("vault_CloneWriteData: Error failed request on " + writeURL);
-                         noteError ("Bad Vault Response: Failed Vault CloneWriteData for: " + name + writePath);
-                         return false;
+                    .then(data => 
+                    {
+                        dbgInfo("vault_CloneWriteData: Return status code " + data.status);
+                        dbgInfo('vault_CloneWriteData: Success:' + name + writePath);
+                        return true;
                     })
                     .catch((error) => {
-                            dbgError  ("vault_CloneWriteData: Error failed request on " + writeURL);
-                            dbgError  ("vault_CloneWriteData: " + error);
-                            noteError ("Exception: Failed Vault CloneWriteData for: " + name + writePath);
-                            return false;
+                        dbgError  ("vault_CloneWriteData: Error failed request on " + writeURL);
+                        dbgError  ("vault_CloneWriteData: " + error);
+                        noteError ("Exception: Failed Vault CloneWriteData for: " + name + writePath);
+                        return false;
                    });
 
                 // ok to continue clone process ?
@@ -3846,8 +3841,13 @@ function cloneMoveActionDialog (srcPath="", destPath="", cloneType="radio-clone"
                                          else
                                              noteNorm ("Cloning operation completed successfully!");
 
+                                        let path = destParamName + destParamPath;
+                                        if (vaultIsFolderPath(srcParamPath))
+                                        {
+                                            path = gfTrimRight(path, FLDRCHR) + FLDRCHR;
+                                        }
                                          // GOTO new cloned location...          
-                                        refreshGotoURI (destParamName + destParamPath);
+                                        refreshGotoURI (path);
                         
                                          // Example Vault UI links:
                                          //    Type Folder      : "/vault/secrets/systems/list/keepass/Access%2520Day%2520Cards/"
