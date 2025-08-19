@@ -2319,7 +2319,7 @@ async function vault_DeleteNode (addr, token, version, name, path)
 }
 
 // Recursive delete child vault items
-function nodeDeleteDict (addr, token, vaultDictList, jqOutput)
+async function nodeDeleteDict (addr, token, vaultDictList, jqOutput)
 {
     for (var k in vaultDictList)
     {
@@ -2335,7 +2335,7 @@ function nodeDeleteDict (addr, token, vaultDictList, jqOutput)
             {
                 $(jqOutput).append("<p>Deleting Node:" + vaultDictList[k].scrtName + vaultDictList[k].scrtPath + "</p>");
             }
-            vault_DeleteNode (addr, token, vaultDictList[k].scrtVersion, vaultDictList[k].scrtName, vaultDictList[k].scrtPath);
+            await vault_DeleteNode (addr, token, vaultDictList[k].scrtVersion, vaultDictList[k].scrtName, vaultDictList[k].scrtPath);
         }
     }
 }
@@ -3444,7 +3444,7 @@ async function cloneRenameMoveSecret (moveRenameOper, srcName, srcPath, destName
                  if (await vault_CloneWriteData (VaultAddr, token, destVersion, destName, destPath, dataTree))
                  {
 
-                     nodeDeleteDict (VaultAddr, token, dataTree);
+                     await nodeDeleteDict (VaultAddr, token, dataTree);
                      vaultActionStartEnd (true);
                      return true;
                  }
@@ -3454,7 +3454,7 @@ async function cloneRenameMoveSecret (moveRenameOper, srcName, srcPath, destName
          {
              if (await vault_CloneWriteData (VaultAddr, token, destVersion, destName, destPath, dataTree))
              {
-                 nodeDeleteDict (VaultAddr, token, dataTree);
+                 await nodeDeleteDict (VaultAddr, token, dataTree);
                  vaultActionStartEnd (true);
                  return true;
              }
