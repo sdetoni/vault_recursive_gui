@@ -3682,9 +3682,9 @@ async function pasteAction ()
             dbgInfo ("pasteAction: pasteBaseName = '" + pasteBaseName + "'");
             dbgInfo ("pasteAction: pasteBasePath = '" + pasteBasePath + "'");
 
-            // ignore operations on the same src and dest path/name 
+            // ignore operations on the same src and dest path/name
             if ( ((srcBaseName == pasteBaseName) && (srcBasePath == pasteBasePath) ) || 
-                 ((srcBaseName == pasteBaseName) && (srcBasePath != '' && srcBasePath.match('^' + gfEscapeRegExp(pasteBasePath)))) )
+                 ((oper == "cut") && (srcBaseName == pasteBaseName) && (srcBasePath != '' && pasteBasePath != '' && srcBasePath.match('^' + gfEscapeRegExp(pasteBasePath)))) )
             {
                 dbgInfo ("pasteAction: operation ignored, as its the same src and dest path/name");
                 continue;
