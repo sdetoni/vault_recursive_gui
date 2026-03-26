@@ -67,7 +67,6 @@ vrrp_script vault_active_node_script {
     fall 1       # If script returns non-zero 2 times in succession, enter FAULT state
     rise 3       # If script returns zero r times in succession, exit FAULT state
     timeout 2    # Wait up to t seconds for script before assuming non-zero exit code
-    weight 10    # Reduce priority by 10 on fall
 }
 
 vrrp_instance VIP_VAULT_HA {
