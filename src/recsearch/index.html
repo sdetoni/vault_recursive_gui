@@ -36,7 +36,7 @@ const AUTHOR                = '<u>Vault Javascript GUI Helper</u><br><br>Written
 const FLDRCHR               = '/';       // char used to separate a vault secrets path (e.g. systems/SMS-Keepass-Database/LoadBalancer)
 const DefaultPage           = "/ui";
 const FrameID               = "vaultIFrame";
-const VaultBaseGUIURI       = "/vault/secrets";
+const VaultBaseGUIURI       = "/vault/secrets-engines";
 const VaultAuthURI          = "/vault/auth?with=oidc";
 const SelectMenuLabelBrk    = '\t';
 var Cryptoe                 = new gfCryptStdCrypto(); Cryptoe.init(16,64);
@@ -378,10 +378,10 @@ else
     {
         // Check/construct url is a leaf node, and so will have a 'show' action
         if ((grpMatch[3] != '') && (grpMatch[3].slice(-1) != FLDRCHR))
-            return apiURL.replace(regex, '/vault/secrets/$2/show/$3');
+            return apiURL.replace(regex, VaultBaseGUIURI + '/$2/show/$3');
 
         // folder url (end with '/') have a 'list' action
-        return apiURL.replace(regex, '/vault/secrets/$2/list/$3');
+        return apiURL.replace(regex, VaultBaseGUIURI + '/$2/list/$3');
     }
 
     regex = /(.*?)\/v1\/(.*?)\/data\/(.*)/;
@@ -389,10 +389,10 @@ else
     if (m)
     {
         // v 1.18.x changed how secret info is linked in the rest api url
-        return  apiURL.replace(regex, '/vault/secrets/$2/kv/' + m[3].replaceAll('/', '%2F') + '/details');
+        return  apiURL.replace(regex, VaultBaseGUIURI + '/$2/kv/' + m[3].replaceAll('/', '%2F') + '/details');
     }
 
-    return apiURL.replace(/(.*?)\/v1\/(.*?)\/(.*)/, '/vault/secrets/$2/show/$3');
+    return apiURL.replace(/(.*?)\/v1\/(.*?)\/(.*)/, VaultBaseGUIURI + '/$2/show/$3');
 }
 
 function vault_pathURLtoNamePath (vaultPathURL)
@@ -402,7 +402,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
 
     dbgTrace ("vault_pathURLtoNamePath(Parsing): >" + vaultPathURL + "<");
     
-    var regex = "/vault/secrets/(.*/)(kv/list)/(.*)";
+    var regex = VaultBaseGUIURI + "/(.*/)(kv/list)/(.*)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {        
@@ -414,7 +414,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }
     
-    var regex = "/vault/secrets/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|configuration$|metadata$|paths$|metadata/versions$|details(\\??version.*)$)";
+    var regex = VaultBaseGUIURI + "/(.*/)(kv(/?))(.*?)(/)(list$|show$|directory$|configuration$|metadata$|paths$|metadata/versions$|details(\\??version.*)$)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {      
@@ -426,7 +426,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }
      
-    var regex = "/vault/secrets/(.*/)(kv/)(.*)";
+    var regex = VaultBaseGUIURI + "/(.*/)(kv/)(.*)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {    
@@ -436,7 +436,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }        
     
-    var regex = "/vault/secrets/(.*/)(list|show)/(.*)";
+    var regex = VaultBaseGUIURI + "/(.*/)(list|show)/(.*)";
     var matchNamePath = vaultPathURL.match(regex);
     if (matchNamePath)
     {    
@@ -446,7 +446,7 @@ function vault_pathURLtoNamePath (vaultPathURL)
         return [name, path];
     }
     
-    regex             = "/vault/secrets/(.*/)(list$|configuration$)";
+    regex             = VaultBaseGUIURI + "/(.*/)(list$|configuration$)";
     var matchBaseName = vaultPathURL.match(regex);
     if (matchBaseName)
     {
